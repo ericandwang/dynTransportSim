@@ -1,6 +1,6 @@
 close all
 clear all
-folder = '../dynamicTransportSim';
+folder = '../dynTransportSim';
 addpath(genpath(folder))
 
 %% Parameter Setup
