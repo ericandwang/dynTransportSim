@@ -142,3 +142,6 @@ psolve = fmincon(problem);
 
 %% Results
 P = reshape(psolve,numel(psolve)/5,5);
+
+figure, plot(P(:,3))
+figure, plot(P(:,1)), hold on, plot(P(:,2))
