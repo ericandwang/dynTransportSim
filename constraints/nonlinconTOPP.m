@@ -1,4 +1,4 @@
-function [c, ceq] = nonlinconTOPP(P, s0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp)
+function [c, ceq] = nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp)
 
 % initial states
 r_GC = [s0(7); s0(8)]; % object frame
@@ -7,13 +7,13 @@ r_GC = [s0(7); s0(8)]; % object frame
 g = param(9);
 
 % states
-P = reshape(P,numel(P)/6,6);
-ss = P(:,1);
-dss = P(:,2);
-ddss = P(:,3);
-ths = P(:,4);
-dths = P(:,5);
-ddths = P(:,6);
+P = reshape(P,numel(P)/5,5);
+ss = ss0;
+dss = P(:,1);
+ddss = P(:,2);
+ths = P(:,3);
+dths = P(:,4);
+ddths = P(:,5);
 
 %% nonlinear inequality constraints
 
@@ -52,8 +52,18 @@ end
 %% nonlinear equality constraints
 
 % path acceleration constraints
-ceq = dss(2:end).^2 - dss(1:end-1).^2 - ...
+ceq1 = dss(2:end).^2 - dss(1:end-1).^2 - ...
     2.*(ss(2:end)-ss(1:end-1)).*ddss(1:end-1);
+
+% orientation kinematic constraints
+%ceq2 = dths(2:end).^2 - dths(1:end-1).^2 - ...
+%    2.*(ths(2:end)-ths(1:end-1)).*ddths(1:end-1);
+dt = 2.*(ss(2:end)-ss(1:end-1))./(dss(2:end)+dss(1:end-1));
+ceq2 = dths(2:end)-dths(1:end-1) - ddths(1:end-1).*dt;
+ceq3 = (ths(1:end-1)-ths(2:end)) + dths(1:end-1).*dt + ...
+    1/2.*ddths(1:end-1).*dt.^2;
+
+ceq = [ceq1; ceq2; ceq3];
 
 end
 

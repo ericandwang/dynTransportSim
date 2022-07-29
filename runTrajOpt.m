@@ -83,13 +83,14 @@ end
 th0 = zeros(evalPoints,1);
 dth0 = zeros(evalPoints,1);
 ddth0 = zeros(evalPoints,1);
-P0 = [ss0; dss0; ddss0; th0; dth0; ddth0];
+P0 = [dss0; ddss0; th0; dth0; ddth0];
 
 % objective function
-fun = @(P) sum(1./P(numel(P)/6+1:2*numel(P)/6,1));
+fun = @(P) sum(1./P(1:evalPoints,1));
 
 % linear inequality constraints
-% monotonic path parameter
+% monotonic path parameter (Note: removed but can reuse for variable delta
+% path lengths)
 Aineq1 = diag(ones(evalPoints,1),0);
 Aineq2 = diag(-1.*ones(evalPoints,1),1);
 Aineq = Aineq1(1:evalPoints-1,1:evalPoints) + ...
@@ -98,41 +99,36 @@ Aineq = [Aineq zeros(size(Aineq,1),evalPoints*5)];
 bineq = zeros(evalPoints-1,1);
 
 % linear equality constraints
-Aeq = zeros(6,length(P0));
-Aeq(1,1) = 1; % position endpoints
-Aeq(2,evalPoints) = 1;
-Aeq(3,evalPoints+1) = fnval(dxp,sBounds(1)); % velocity endpoints
-Aeq(4,2*evalPoints) = fnval(dxp,sBounds(2));
-Aeq(5,evalPoints+1) = fnval(dyp,sBounds(1));
-Aeq(6,2*evalPoints) = fnval(dyp,sBounds(2));
-Aeq(7,3*evalPoints+1) = 1; % angle endpoints
-Aeq(8,4*evalPoints) = 1;
-Aeq(9,4*evalPoints+1) = 1; % angular velocity endpoints
-Aeq(10,5*evalPoints) = 1;
-beq = [sBounds(1); sBounds(2); ...
-        s0(2); dx_des(1); ...
-        s0(4); dx_des(2); ...
-        s0(5); x_des(3); ...
-        s0(6); dx_des(3)];
+Aeq = zeros(4,length(P0));
+Aeq(1,1) = fnval(dxp,sBounds(1)); % velocity endpoints
+Aeq(2,evalPoints) = fnval(dxp,sBounds(2));
+Aeq(3,1) = fnval(dyp,sBounds(1));
+Aeq(4,evalPoints) = fnval(dyp,sBounds(2));
+Aeq(5,2*evalPoints+1) = 1; % angle endpoints
+Aeq(6,3*evalPoints) = 1;
+Aeq(7,4*evalPoints+1) = 1; % angular velocity endpoints
+Aeq(8,5*evalPoints) = 1;
+beq = [s0(2); dx_des(1); ...
+       s0(4); dx_des(2); ...
+       s0(5); x_des(3); ...
+       s0(6); dx_des(3)];
 
 % lower and upper bounds
-lb = [ones(evalPoints,1).*sBounds(1); ...
-      zeros(evalPoints,1); ones(evalPoints,1).*-Inf; ...
+lb = [zeros(evalPoints,1); ones(evalPoints,1).*-Inf; ...
       ones(evalPoints,1).*-pi; ones(evalPoints,1).*-Inf; ...
       ones(evalPoints,1).*-Inf];
-ub = [ones(evalPoints,1).*sBounds(2); ...
-      ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
+ub = [ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
       ones(evalPoints,1).*pi; ones(evalPoints,1).*Inf; ...
       ones(evalPoints,1).*Inf];
 
 % nonlinear constraint function
-nonlcon = @(P) nonlinconTOPP(P, s0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp);
+nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp);
 
 % optimization
 problem.x0 = P0;
 problem.objective = fun;
-problem.Aineq = Aineq;
-problem.bineq = bineq;
+problem.Aineq = [];
+problem.bineq = [];
 problem.Aeq = Aeq;
 problem.beq = beq;
 problem.lb = lb;
@@ -145,4 +141,4 @@ problem.options = optimoptions('fmincon','Display','iter');
 psolve = fmincon(problem);
 
 %% Results
-P = reshape(psolve,numel(psolve)/6,6);
+P = reshape(psolve,numel(psolve)/5,5);
