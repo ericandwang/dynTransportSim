@@ -144,4 +144,8 @@ psolve = fmincon(problem);
 P = reshape(psolve,numel(psolve)/5,5);
 
 figure, plot(P(:,3))
+title ('Orientation')
+ylabel('angle [rad]')
 figure, plot(P(:,1)), hold on, plot(P(:,2))
+legend({'$\dot{s}$','$\ddot{s}$'},'Interpreter','latex')
+title('$\dot{s}$ and $\ddot{s}$','Interpreter','latex')
