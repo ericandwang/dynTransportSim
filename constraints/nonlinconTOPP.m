@@ -1,4 +1,4 @@
-function [c, ceq] = nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp)
+function [c, ceq, dc, dceq] = nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun)
 
 % initial states
 r_GC = [s0(7); s0(8)]; % object frame
@@ -7,6 +7,7 @@ r_GC = [s0(7); s0(8)]; % object frame
 g = param(9);
 
 % states
+Pmat = P;
 P = reshape(P,numel(P)/5,5);
 ss = ss0;
 dss = P(:,1);
@@ -23,12 +24,12 @@ R_GC = norm(r_GC);
 th_GC = angle(r_GC(1) + 1i*r_GC(2));
 p = zeros(3,nPoints);
 for ii = 1:nPoints
-    th = ths(ii);
-    dth = dths(ii);
-    ddth = ddths(ii);
     s = ss(ii);
     ds = dss(ii);
     dds = ddss(ii);
+    th = ths(ii);
+    dth = dths(ii);
+    ddth = ddths(ii);
     ax_G = fnval(ddxp,s)*ds^2 + fnval(dxp,s)^2*dds;
     ay_G = fnval(ddyp,s)*ds^2 + fnval(dyp,s)^2*dds;
     p(:,ii) = [cos(th) sin(th) -R_GC*sin(th_GC); ...
@@ -56,8 +57,6 @@ ceq1 = dss(2:end).^2 - dss(1:end-1).^2 - ...
     2.*(ss(2:end)-ss(1:end-1)).*ddss(1:end-1);
 
 % orientation kinematic constraints
-%ceq2 = dths(2:end).^2 - dths(1:end-1).^2 - ...
-%    2.*(ths(2:end)-ths(1:end-1)).*ddths(1:end-1);
 dt = 2.*(ss(2:end)-ss(1:end-1))./(dss(2:end)+dss(1:end-1));
 ceq2 = dths(2:end)-dths(1:end-1) - ddths(1:end-1).*dt;
 ceq3 = (ths(1:end-1)-ths(2:end)) + dths(1:end-1).*dt + ...
@@ -65,5 +64,12 @@ ceq3 = (ths(1:end-1)-ths(2:end)) + dths(1:end-1).*dt + ...
 
 ceq = [ceq1; ceq2; ceq3];
 
+%% gradients
+if nargout > 2
+dc = dcFun(Pmat);
+
+% equality gradients
+dceq = dceqFun(Pmat);
+end
 end
 
