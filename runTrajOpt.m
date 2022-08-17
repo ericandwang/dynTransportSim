@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 useObjectiveGradient = true;
-useConstraintGradient = false;
+useConstraintGradient = true;
 
 %% Parameter Setup
 % hand and object dimensions
@@ -78,7 +78,7 @@ ddyp = fnder(yp,2);
 %% TOPP Preoptimization
 % equally spaced evaluation points and initial conditions
 evalPoints = 31;
-initialVel = 1e-2;
+initialVel = 1;%1e-2;
 ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
 dss0 = ones(evalPoints,1).*initialVel;
 ddss0 = zeros(evalPoints,1);
@@ -163,6 +163,12 @@ psolve = fmincon(problem);
 
 %% Results
 P = reshape(psolve,numel(psolve)/5,5);
+ss = ss0;
+dss = P(:,1);
+ddss = P(:,2);
+ths = P(:,3);
+dths = P(:,4);
+ddths = P(:,5);
 
 figure, plot(P(:,3))
 title ('Orientation')
@@ -172,5 +178,52 @@ legend({'$\dot{s}$','$\ddot{s}$'},'Interpreter','latex')
 title('$\dot{s}$ and $\ddot{s}$','Interpreter','latex')
 figure, plot(fnval(xp,ss0), fnval(yp,ss0))
 
-%% Reshaping Path
+% forward time scaling
+dT = 2.*(ss(2:end)-ss(1:end-1))./(dss(2:end)+dss(1:end-1));
+tss = cumsum([0; dT]);
+dt = min(dT)/10;
+dx = fnval(dxp,ss).*dss;
+dy = fnval(dyp,ss).*dss;
+dth = dths;
+t = 0:dt:tss(end);
+dx = interp1(tss,dx,t);
+dy = interp1(tss,dy,t);
+dth = interp1(tss,dth,t);
+x_G = cumsum(dx.*dt)' + s0(1);
+y_G = cumsum(dy.*dt)' + s0(3);
+th = cumsum(dth.*dt)' + s0(5);
+
+%% Show animation
+movingWindow = false;
+
+% initialize animation
+CoR_radius = 0.005;
+figure(1000); clf;
+axis equal
+
+% show animation
+for i = 1:length(t)
+    hold off
+    hand = plot([-handW/2, handW/2, handW/2, -handW/2, -handW/2]+x_G(i), ...
+        [handH/2, handH/2, -handH/2, -handH/2, handH/2]+y_G(i));
+    hold on
+    object = plot([-objectW/2, objectW/2, objectW/2, -objectW/2, -objectW/2]+x_G(i)+r_GC(1), ...
+        [objectH/2, objectH/2, -objectH/2, -objectH/2, objectH/2]+y_G(i)+r_GC(2));
+    CoR = rectangle('Position',[x_G(i)-CoR_radius/2 y_G(i)-CoR_radius/2 ...
+        CoR_radius CoR_radius],'Curvature',[1 1]);
+    rotate(hand,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
+    rotate(object,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
+    if (movingWindow)
+        axis equal
+        axis manual
+        plot(x_G(1:i),y_G(1:i))
+    else
+        plot(x_G(1:i),y_G(1:i))
+        xlim([min([x_G;y_G])-1 max([x_G;y_G])+1])
+        ylim([min([x_G;y_G])-1 max([x_G;y_G])+1])
+    end
+    ylabel('y [m]')
+    xlabel('x [m]')
+    drawnow
+end
 
