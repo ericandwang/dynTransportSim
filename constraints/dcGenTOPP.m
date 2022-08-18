@@ -39,8 +39,8 @@ for ii = 1:nPoints
     th = ths(ii);
     dth = dths(ii);
     ddth = ddths(ii);
-    ax_G = fnval(ddxp,s)*ds^2 + fnval(dxp,s)^2*dds;
-    ay_G = fnval(ddyp,s)*ds^2 + fnval(dyp,s)^2*dds;
+    ax_G = fnval(ddxp,s)*ds^2 + fnval(dxp,s)*dds;
+    ay_G = fnval(ddyp,s)*ds^2 + fnval(dyp,s)*dds;
     p(:,ii) = [cos(th) sin(th) -R_GC*sin(th_GC); ...
               -sin(th) cos(th) R_GC*cos(th_GC); ...
               0 0 1]*[ax_G; ay_G; ddth] + ...

@@ -63,7 +63,7 @@ saveController = 0;
 fileName = 'trajOpt3-29.mat';
 saveVideo = 0;
 specialName = '';
-controlMode = 10;
+controlMode = 5;
 mode = 0; % -1 = exit (fail) 0 = dynamic grasping 1 = sliding
 if (any(stabilizingControl == controlMode))
     load(fileName)

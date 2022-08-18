@@ -8,8 +8,8 @@ th_GC = angle(r_GC(1) + 1i*r_GC(2));
 
 % symbolics
 syms ds dds th dth ddth
-ax_G = fnval(ddxp,s)*ds^2 + fnval(dxp,s)^2*dds;
-ay_G = fnval(ddyp,s)*ds^2 + fnval(dyp,s)^2*dds;
+ax_G = fnval(ddxp,s)*ds^2 + fnval(dxp,s)*dds;
+ay_G = fnval(ddyp,s)*ds^2 + fnval(dyp,s)*dds;
 
 p = [cos(th) sin(th) -R_GC*sin(th_GC); ...
               -sin(th) cos(th) R_GC*cos(th_GC); ...

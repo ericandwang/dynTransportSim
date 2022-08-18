@@ -30,8 +30,8 @@ for ii = 1:nPoints
     th = ths(ii);
     dth = dths(ii);
     ddth = ddths(ii);
-    ax_G = fnval(ddxp,s)*ds^2 + fnval(dxp,s)^2*dds;
-    ay_G = fnval(ddyp,s)*ds^2 + fnval(dyp,s)^2*dds;
+    ax_G = fnval(ddxp,s)*ds^2 + fnval(dxp,s)*dds;
+    ay_G = fnval(ddyp,s)*ds^2 + fnval(dyp,s)*dds;
     p(:,ii) = [cos(th) sin(th) -R_GC*sin(th_GC); ...
               -sin(th) cos(th) R_GC*cos(th_GC); ...
               0 0 1]*[ax_G; ay_G; ddth] + ...
@@ -45,8 +45,7 @@ dim = size(fCone,2);
 c = zeros(nPoints*dim,1);
 for j = 1:nPoints
     for i = 1:dim
-        c(i + dim*(j-1)) = vec(1,i)*(p(1,j)-fCone(1,i)) + vec(2,i)*(p(2,j)-fCone(2,i)) + ...
-            vec(3,i)*(p(3,j)-fCone(3,i)) + norm(vec(:,i))*tol;
+        c(i + dim*(j-1)) = dot(vec(:,i),p(:,j)-fCone(:,i)) + norm(vec(:,i))*tol;
     end
 end
 
