@@ -26,10 +26,10 @@ P_query(:,4) = [0; 0; -mu*maxNF; maxNF];
 W = J'*P_query;
 A = [W(1,:)/m_C; W(2,:)/m_C; W(3,:)/I_C]; % acceleration space
 
-% 4 point output
+% 4 point output (plane points)
 fCone = A;
 
-% vector output
+% vector output (plane normals)
 vec = zeros(size(fCone));
 for i = 1:4
     v1 = fCone(:,i);

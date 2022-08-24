@@ -15,9 +15,7 @@ R_GC = norm(r_GC);
 th_GC = angle(r_GC(1) + 1i*r_GC(2));
 g = param(9);
 
-% Objective function
-f = 0;
-dim = size(fCone,2);
+% Gravito-inertial wrench
 nPoints = length(ss);
 for i = 1:nPoints
     ds = P(i,1);

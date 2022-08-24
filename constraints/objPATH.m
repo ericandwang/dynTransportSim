@@ -32,9 +32,9 @@ for i = 1:length(ss)
               [g*sin(th)-R_GC*dth^2*cos(th_GC); ...
               g*cos(th)-R_GC*dth^2*sin(th_GC); 0];
     for j = 1:dim
-        dist = -dot(vec(:,j),p-fCone(:,j))/norm(vec(:,j));
-        f = f + 1/dist;
+        dist(j) = dot(vec(:,j),p-fCone(:,j))/norm(vec(:,j));
     end
+    f = f - prod(dist);
 end
 
 end

@@ -5,10 +5,11 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 2;
+numIterations = 1;
 % TOPP optimization
 useObjectiveGradient = true;
 useConstraintGradient = true;
+useLinearization = false;
 % animation
 showAnimation = false;
 movingWindow = false;
@@ -82,30 +83,41 @@ dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
 %% Iteration (TOPP <-> path)
+times = zeros(numIterations,1);
 for iii = 1:numIterations
 %% TOPP Preoptimization
 % equally spaced evaluation points and initial conditions
 evalPoints = 31;
 initialVel = 1;%1e-2;
-ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
-dss0 = ones(evalPoints,1).*initialVel;
-ddss0 = zeros(evalPoints,1);
-for ii = 1:length(ddss0)-1
-    ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
-end
-th0 = ones(evalPoints,1).*s0(5);
-dth0 = zeros(evalPoints,1);
-ddth0 = zeros(evalPoints,1);
+
 if (iii == 1)
+    ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
+    dss0 = ones(evalPoints,1).*initialVel;
+    ddss0 = zeros(evalPoints,1);
+    for ii = 1:length(ddss0)-1
+        ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
+    end
+    th0 = ones(evalPoints,1).*s0(5);
+    dth0 = zeros(evalPoints,1);
+    ddth0 = zeros(evalPoints,1);
     P0 = [dss0; ddss0; th0; dth0; ddth0];
 else
     P0 = psolve;
+    dss0 = psolve(1:evalPoints);
+    ddss0 = psolve(evalPoints+1:2*evalPoints);
+    th0 = psolve(2*evalPoints+1:3*evalPoints);
+    dth0 = psolve(3*evalPoints+1:4*evalPoints);
+    ddth0 = psolve(4*evalPoints+1:5*evalPoints);
 end
 
 if (useConstraintGradient)
     disp('Calculating constraint gradient functions...')
     % calculate inequality constraint jacobian
-    dcFun = dcGenTOPP(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints);
+    if (useLinearization)
+        dcFun = dcGenTOPP_lin(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints,th0);
+    else
+        dcFun = dcGenTOPP(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints);
+    end
     % calculate equality constraint jacobian
     dceqFun = dceqGenTOPP(ss0, evalPoints);
 else
@@ -152,7 +164,11 @@ ub = [ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
       ones(evalPoints,1).*Inf];
 
 % nonlinear constraint function
-nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun);
+if (useLinearization)
+    nonlcon = @(P) nonlinconTOPP_lin(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun, th0);
+else
+    nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun);
+end
 
 % optimization
 problem.x0 = P0;
@@ -168,10 +184,12 @@ problem.solver = 'fmincon';
 problem.options = optimoptions('fmincon', ...
     'SpecifyObjectiveGradient',useObjectiveGradient, ...
     'SpecifyConstraintGradient',useConstraintGradient, ...
+    'MaxFunctionEvaluations', 5000, ...
     'Display','iter');
 
 % invoke solver
 psolve = fmincon(problem);
+times(iii) = sum(1./(psolve(2:evalPoints-1)))*ss0(2)-ss0(1);
 
 %% TOPP Results
 P = reshape(psolve,numel(psolve)/5,5);
