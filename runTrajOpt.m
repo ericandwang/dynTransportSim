@@ -5,13 +5,14 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 1;
+numIterations = 2;
 % TOPP optimization
 useObjectiveGradient = true;
 useConstraintGradient = true;
 useLinearization = false;
 % animation
-showAnimation = false;
+showAnimation = true;
+showSnapshots = true;
 movingWindow = false;
 
 %% Parameter Setup
@@ -44,7 +45,7 @@ s0 = [0; ...        % x_G -5
       0; ...        % dx_G
       0; ...        % y_G 5
       0; ...        % dy_G
-      0; ...        % th
+      -pi/4; ...        % th
       0; ...        % dth
       r_GC; ...     % r_GC
       0; ...        % dr_GC
@@ -65,7 +66,7 @@ maxNormalForce = 10; % max normal force [N]
 [fCone, vec] = generatefCone(param,maxNormalForce);
 
 %% Spline Generation
-controlPoints = 11;
+controlPoints = 31;
 porder = 5;
 sBounds = [0 1];
 
@@ -231,13 +232,17 @@ if (showAnimation)
     axis equal
     
     % show animation
-    for i = 1:length(t)
-        hold off
+    for i = 1:1+29*showSnapshots:length(t)
+        if (showSnapshots)
+            hold on
+        else
+            hold off
+        end
         hand = plot([-handW/2, handW/2, handW/2, -handW/2, -handW/2]+x_G(i), ...
-            [handH/2, handH/2, -handH/2, -handH/2, handH/2]+y_G(i));
+            [handH/2, handH/2, -handH/2, -handH/2, handH/2]+y_G(i), 'color', [0    0.4470    0.7410]);
         hold on
         object = plot([-objectW/2, objectW/2, objectW/2, -objectW/2, -objectW/2]+x_G(i)+r_GC(1), ...
-            [objectH/2, objectH/2, -objectH/2, -objectH/2, objectH/2]+y_G(i)+r_GC(2));
+            [objectH/2, objectH/2, -objectH/2, -objectH/2, objectH/2]+y_G(i)+r_GC(2), 'color', [0.8500    0.3250    0.0980]);
         CoR = rectangle('Position',[x_G(i)-CoR_radius/2 y_G(i)-CoR_radius/2 ...
             CoR_radius CoR_radius],'Curvature',[1 1]);
         rotate(hand,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
@@ -247,7 +252,7 @@ if (showAnimation)
             axis manual
             plot(x_G(1:i),y_G(1:i))
         else
-            plot(x_G(1:i),y_G(1:i))
+            plot(x_G(1:i),y_G(1:i),'--')
             xlim([min([x_G;y_G])-1 max([x_G;y_G])+1])
             ylim([min([x_G;y_G])-1 max([x_G;y_G])+1])
         end
@@ -287,7 +292,11 @@ end
 %    pSave(:,i) = worldToObject(t(i),sS(i,:)',param,uS(i,:));
 %end
 scatter3(p(1,1),p(2,1),p(3,1),'k');
-plot3(p(1,:),p(2,:),p(3,:),'r')
+if (iii == 1)
+    plot3(p(1,:),p(2,:),p(3,:),'b')
+else
+    plot3(p(1,:),p(2,:),p(3,:),'r')
+end
 %hold on
 %scatter3(pSave(1,1),pSave(2,1),pSave(3,1),'k')
 %plot3(pSave(1,:),pSave(2,:),pSave(3,:),'b')
@@ -384,7 +393,11 @@ end
 %    pSave(:,i) = worldToObject(t(i),sS(i,:)',param,uS(i,:));
 %end
 scatter3(p(1,1),p(2,1),p(3,1),'k');
-plot3(p(1,:),p(2,:),p(3,:),'r')
+if (iii == 1)
+    plot3(p(1,:),p(2,:),p(3,:),'b')
+else
+    plot3(p(1,:),p(2,:),p(3,:),'r')
+end
 %hold on
 %scatter3(pSave(1,1),pSave(2,1),pSave(3,1),'k')
 %plot3(pSave(1,:),pSave(2,:),pSave(3,:),'b')

@@ -1,4 +1,5 @@
 function [f] = objPATH(P, r_GC, param, fCone, vec, ss, cc, endPoints, xxyy, porder, controlPoints)
+% distance from plane method
 
 % control points spline construction
 xx = [endPoints(1) xxyy(1:controlPoints-2) endPoints(2)];
@@ -32,9 +33,9 @@ for i = 1:length(ss)
               [g*sin(th)-R_GC*dth^2*cos(th_GC); ...
               g*cos(th)-R_GC*dth^2*sin(th_GC); 0];
     for j = 1:dim
-        dist(j) = dot(vec(:,j),p-fCone(:,j))/norm(vec(:,j));
+        dist(j) = dot(-vec(:,j),p-fCone(:,j))/norm(vec(:,j));
     end
-    f = f - prod(dist);
+    f = f - min(dist);
 end
 
 end
