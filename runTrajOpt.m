@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 2;
+numIterations = 3;
 % TOPP optimization
 useObjectiveGradient = true;
 useConstraintGradient = true;
@@ -111,13 +111,16 @@ else
     ddth0 = psolve(4*evalPoints+1:5*evalPoints);
 end
 
+% object frame y acceleration limit
+accelLim = 100;
+
 if (useConstraintGradient)
     disp('Calculating constraint gradient functions...')
     % calculate inequality constraint jacobian
     if (useLinearization)
         dcFun = dcGenTOPP_lin(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints,th0);
     else
-        dcFun = dcGenTOPP(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints);
+        dcFun = dcGenTOPP(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints, accelLim);
     end
     % calculate equality constraint jacobian
     dceqFun = dceqGenTOPP(ss0, evalPoints);
@@ -168,7 +171,7 @@ ub = [ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
 if (useLinearization)
     nonlcon = @(P) nonlinconTOPP_lin(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun, th0);
 else
-    nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun);
+    nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun, accelLim);
 end
 
 % optimization
@@ -294,8 +297,10 @@ end
 scatter3(p(1,1),p(2,1),p(3,1),'k');
 if (iii == 1)
     plot3(p(1,:),p(2,:),p(3,:),'b')
-else
+elseif (iii == 2)
     plot3(p(1,:),p(2,:),p(3,:),'r')
+else
+    plot3(p(1,:),p(2,:),p(3,:),'g')
 end
 %hold on
 %scatter3(pSave(1,1),pSave(2,1),pSave(3,1),'k')
@@ -308,59 +313,80 @@ title('Gravito-Inertial Wrench Constraints')
 
 %% Repathing
 
-endPoints = [xx(1) xx(end) yy(1) yy(end)];
-xxyy0 = [xx(2:end-1) yy(2:end-1)];
+% initial B-spline control points
+xcoefs0 = xp.coefs';
+ycoefs0 = yp.coefs';
+coefs0 = [xcoefs0; ycoefs0];
 
 % objective function
-fun = @(xxyy) objPATH(P, r_GC, param, fCone, vec, ss0, cc, endPoints, xxyy, porder, collPoints);
+fun = @(coefs) objPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs);
 
-% lower and upper bounds
-splinePoints = collPoints-2;
-xxmin = min(endPoints(1),endPoints(2));
-xxmax = max(endPoints(1),endPoints(2));
-yymin = min(endPoints(3),endPoints(4));
-yymax = max(endPoints(3),endPoints(4));
-lb = [ones(splinePoints,1).*xxmin; ones(splinePoints,1).*yymin];
-ub = [ones(splinePoints,1).*xxmax; ones(splinePoints,1).*yymax];
+% control point bounds
+%lb = ones(numCoefs,1).*-10;
+%ub = ones(numCoefs,1).*10;
+
+% endpoint constraints and acceleration constraints
+[basis, dbasis, ddbasis, ~] = splineBasisCoefs(knotVec, porder);
+numCoefs = length(coefs0);
+polyMultiplier = basis{1}(1,end);
+% endpoints
+Aeq = zeros(4,numCoefs);
+Aeq(1,1) = polyMultiplier;
+Aeq(2,numCoefs/2) = polyMultiplier;
+Aeq(3,numCoefs/2+1) = polyMultiplier;
+Aeq(4,end) = polyMultiplier;
+beq = [s0(1); x_des(1); s0(3); x_des(2)];
+% accelerations CCC not implemented
+%Aeq2 = [ddImpulses' zeros(size(ddImpulses')); ...
+%        zeros(size(ddImpulses')) ddImpulses'; ...
+%        -ddImpulses' zeros(size(ddImpulses')); ...
+%        zeros(size(ddImpulses')) -ddImpulses'];
+%numAccel = size(ddImpulses,2);
+%limAccel = 1000;
+%beq2 = [ones(numAccel*2,1).*limAccel; ones(numAccel*2,1).*-limAccel];
+%Aeq = [Aeq1];
+%beq = [beq1];
+% object frame y acceleration limit
+%accelLim = max(p(2,:))*1.2;
+
 
 % nonlinear constraint function
-nonlcon = @(xxyy) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, cc, endPoints, xxyy, porder, collPoints, tol);
+nonlcon = @(coefs) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, tol, accelLim);
 
 % optimization
-problem.x0 = xxyy0;
+problem.x0 = coefs0;
 problem.objective = fun;
 problem.Aineq = [];
 problem.bineq = [];
-problem.Aeq = [];
-problem.beq = [];
-problem.lb = lb;
-problem.ub = ub;
+problem.Aeq = Aeq;
+problem.beq = beq;
+problem.lb = [];
+problem.ub = [];
 problem.nonlcon = nonlcon;
 problem.solver = 'fmincon';
 problem.options = optimoptions('fmincon', 'Display','iter');
 
 % invoke solver
 disp('Replanning path...')
-xxyysolve = fmincon(problem);
+coefs = fmincon(problem);
 
 %% Path results
 % save old path
-xxold = xx;
-yyold = yy;
-xpold = xp;
-ypold = yp;
-dxpold = dxp;
-dypold = dyp;
-ddxpold = ddxp;
-ddypold = ddyp;
+xpold{iii} = xp;
+ypold{iii} = yp;
+dxpold{iii} = dxp;
+dypold{iii} = dyp;
+ddxpold{iii} = ddxp;
+ddypold{iii} = ddyp;
 
 % new path
-xx = [endPoints(1) xxyysolve(1:splinePoints) endPoints(2)];
-yy = [endPoints(3) xxyysolve(splinePoints+1:end) endPoints(4)];
-xp = spapi(optknt(cc,porder), cc, xx);
+numCoefs = length(coefs);
+xcoefs = coefs(1:numCoefs/2);
+ycoefs = coefs(numCoefs/2+1:end);
+xp = spmak(knotVec,xcoefs');
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
-yp = spapi(optknt(cc,porder), cc, yy);
+yp = spmak(knotVec,ycoefs');
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
@@ -395,8 +421,10 @@ end
 scatter3(p(1,1),p(2,1),p(3,1),'k');
 if (iii == 1)
     plot3(p(1,:),p(2,:),p(3,:),'b')
-else
+elseif (iii == 2)
     plot3(p(1,:),p(2,:),p(3,:),'r')
+else
+    plot3(p(1,:),p(2,:),p(3,:),'g')
 end
 %hold on
 %scatter3(pSave(1,1),pSave(2,1),pSave(3,1),'k')
@@ -408,6 +436,6 @@ zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
 title('Gravito-Inertial Wrench Constraints')
 
 % Show difference in path
-figure, plot(fnval(xpold,ss0), fnval(ypold,ss0))
+figure, plot(fnval(xpold{iii},ss0), fnval(ypold{iii},ss0))
 hold on, plot(fnval(xp,ss0), fnval(yp,ss0))
 end

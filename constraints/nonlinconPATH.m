@@ -1,12 +1,13 @@
-function [c, ceq] = nonlinconPATH(P, r_GC, param, fCone, vec, ss, cc, endPoints, xxyy, porder, controlPoints, tol)
+function [c, ceq] = nonlinconPATH(P, r_GC, param, fCone, vec, ss, knotVec, coefs, tol, accelLim)
 
-% control points spline construction
-xx = [endPoints(1) xxyy(1:controlPoints-2) endPoints(2)];
-yy = [endPoints(3) xxyy(controlPoints-2+1:end) endPoints(4)];
-xp = spapi(optknt(cc,porder), cc, xx);
+% spline construction
+numCoefs = length(coefs);
+xcoefs = coefs(1:numCoefs/2);
+ycoefs = coefs(numCoefs/2+1:end);
+xp = spmak(knotVec,xcoefs');
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
-yp = spapi(optknt(cc,porder), cc, yy);
+yp = spmak(knotVec,ycoefs');
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
@@ -40,6 +41,10 @@ for j = 1:nPoints
         c(i + dim*(j-1)) = dot(vec(:,i),p(:,j)-fCone(:,i)) + norm(vec(:,i))*tol;
     end
 end
+
+% appending object frame y acceleration
+cappend = p(2,:)' - accelLim;
+c = [c; cappend];
 
 
 %% nonlinear equality constraints

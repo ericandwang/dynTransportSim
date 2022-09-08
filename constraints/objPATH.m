@@ -1,13 +1,14 @@
-function [f] = objPATH(P, r_GC, param, fCone, vec, ss, cc, endPoints, xxyy, porder, controlPoints)
+function [f] = objPATH(P, r_GC, param, fCone, vec, ss, knotVec, coefs)
 % distance from plane method
 
-% control points spline construction
-xx = [endPoints(1) xxyy(1:controlPoints-2) endPoints(2)];
-yy = [endPoints(3) xxyy(controlPoints-2+1:end) endPoints(4)];
-xp = spapi(optknt(cc,porder), cc, xx);
+% spline construction
+numCoefs = length(coefs);
+xcoefs = coefs(1:numCoefs/2);
+ycoefs = coefs(numCoefs/2+1:end);
+xp = spmak(knotVec,xcoefs');
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
-yp = spapi(optknt(cc,porder), cc, yy);
+yp = spmak(knotVec,ycoefs');
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 

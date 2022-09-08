@@ -1,4 +1,4 @@
-function dc = dcGenTOPP(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss, nPoints)
+function dc = dcGenTOPP(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss, nPoints, accelLim)
 
 syms dss ddss ths dths ddths
 dss = sym('dss',[nPoints,1]);
@@ -53,10 +53,14 @@ end
 dim = size(fCone,2);
 for j = 1:nPoints
     for i = 1:dim
-        c(i + dim*(j-1)) = vec(1,i)*(p(1,j)-fCone(1,i)) + vec(2,i)*(p(2,j)-fCone(2,i)) + ...
+        c(i + dim*(j-1),1) = vec(1,i)*(p(1,j)-fCone(1,i)) + vec(2,i)*(p(2,j)-fCone(2,i)) + ...
             vec(3,i)*(p(3,j)-fCone(3,i));
     end
 end
+
+% appending object frame y acceleration
+cappend = p(2,:)' - accelLim;
+c = [c; cappend];
 
 jac = jacobian(c,states)';
 

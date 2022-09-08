@@ -1,4 +1,4 @@
-function [c, ceq, dc, dceq] = nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun)
+function [c, ceq, dc, dceq] = nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun, accelLim)
 
 % initial states
 r_GC = [s0(7); s0(8)]; % object frame
@@ -48,6 +48,10 @@ for j = 1:nPoints
         c(i + dim*(j-1)) = dot(vec(:,i),p(:,j)-fCone(:,i)) + norm(vec(:,i))*tol;
     end
 end
+
+% appending object frame y acceleration
+cappend = p(2,:)' - accelLim;
+c = [c; cappend];
 
 %% nonlinear equality constraints
 
