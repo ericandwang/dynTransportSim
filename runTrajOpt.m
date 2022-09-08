@@ -66,20 +66,20 @@ maxNormalForce = 10; % max normal force [N]
 [fCone, vec] = generatefCone(param,maxNormalForce);
 
 %% Spline Generation
-controlPoints = 31;
-porder = 5;
+collPoints = 31;
+porder = 3;
 sBounds = [0 1];
 
-cc = linspace(sBounds(1),sBounds(2),controlPoints);
-xx = linspace(s0(1),x_des(1),controlPoints);
-yy = linspace(s0(3),x_des(2),controlPoints);
-%xx = (cc.^3).*x_des(1);
-%yy = (2*cc - cc.^3)*x_des(2);
+cc = linspace(sBounds(1),sBounds(2),collPoints);
+xx = linspace(s0(1),x_des(1),collPoints);
+yy = linspace(s0(3),x_des(2),collPoints);
 
-xp = spapi(optknt(cc,porder), cc, xx);
+knotVec = [ones(1,2).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,2).*sBounds(2)];
+interpPoints = linspace(sBounds(1),sBounds(2),collPoints+1);
+xp = spapi(knotVec, interpPoints, interp1(cc,xx,interpPoints));
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
-yp = spapi(optknt(cc,porder), cc, yy);
+yp = spapi(knotVec, interpPoints, interp1(cc,yy,interpPoints));
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
@@ -312,10 +312,10 @@ endPoints = [xx(1) xx(end) yy(1) yy(end)];
 xxyy0 = [xx(2:end-1) yy(2:end-1)];
 
 % objective function
-fun = @(xxyy) objPATH(P, r_GC, param, fCone, vec, ss0, cc, endPoints, xxyy, porder, controlPoints);
+fun = @(xxyy) objPATH(P, r_GC, param, fCone, vec, ss0, cc, endPoints, xxyy, porder, collPoints);
 
 % lower and upper bounds
-splinePoints = controlPoints-2;
+splinePoints = collPoints-2;
 xxmin = min(endPoints(1),endPoints(2));
 xxmax = max(endPoints(1),endPoints(2));
 yymin = min(endPoints(3),endPoints(4));
@@ -324,7 +324,7 @@ lb = [ones(splinePoints,1).*xxmin; ones(splinePoints,1).*yymin];
 ub = [ones(splinePoints,1).*xxmax; ones(splinePoints,1).*yymax];
 
 % nonlinear constraint function
-nonlcon = @(xxyy) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, cc, endPoints, xxyy, porder, controlPoints, tol);
+nonlcon = @(xxyy) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, cc, endPoints, xxyy, porder, collPoints, tol);
 
 % optimization
 problem.x0 = xxyy0;
