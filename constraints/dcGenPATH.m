@@ -1,15 +1,13 @@
-function [c, ceq, dc, dceq] = nonlinconPATH(P, r_GC, param, fCone, vec, ss, knotVec, coefs, tol, dcFun, accelLim)
+function dc = dcGenPATH(P, r_GC, param, fCone, vec, ss, knotVec, numCoefs, accelLim)
 
 % spline construction
+syms coefs
+coefs = sym('coefs',[numCoefs,1]);
 numCoefs = length(coefs);
 xcoefs = coefs(1:numCoefs/2);
 ycoefs = coefs(numCoefs/2+1:end);
-xp = spmak(knotVec,xcoefs');
-dxp = fnder(xp,1);
-ddxp = fnder(xp,2);
-yp = spmak(knotVec,ycoefs');
-dyp = fnder(yp,1);
-ddyp = fnder(yp,2);
+[~, ~, dxp_, ddxp_] = splineDiscreteReconstruct(knotVec, xcoefs);
+[~, ~, dyp_, ddyp_] = splineDiscreteReconstruct(knotVec, ycoefs);
 
 % constants
 R_GC = norm(r_GC);
@@ -24,8 +22,8 @@ for i = 1:nPoints
     th = P(i,3);
     dth = P(i,4);
     ddth = P(i,5);
-    ax_G = fnval(ddxp,ss(i))*ds^2 + fnval(dxp,ss(i))*dds;
-    ay_G = fnval(ddyp,ss(i))*ds^2 + fnval(dyp,ss(i))*dds;
+    ax_G = ddxp_(i)*ds^2 + dxp_(i)*dds;
+    ay_G = ddyp_(i)*ds^2 + dyp_(i)*dds;
     p(:,i) = [cos(th) sin(th) -R_GC*sin(th_GC); ...
               -sin(th) cos(th) R_GC*cos(th_GC); ...
               0 0 1]*[ax_G; ay_G; ddth] + ...
@@ -33,12 +31,11 @@ for i = 1:nPoints
               g*cos(th)-R_GC*dth^2*sin(th_GC); 0];
 end
 
-%% nonlinear inequality constraints
+% constructing linear plane constraints
 dim = size(fCone,2);
-c = zeros(nPoints*dim,1);
 for j = 1:nPoints
     for i = 1:dim
-        c(i + dim*(j-1)) = dot(vec(:,i),p(:,j)-fCone(:,i)) + norm(vec(:,i))*tol;
+        c(i + dim*(j-1),1) = dot(vec(:,i),p(:,j)-fCone(:,i));
     end
 end
 
@@ -47,16 +44,10 @@ cappend = p(2,:)' - accelLim;
 c = [c; cappend];
 
 
-%% nonlinear equality constraints
-ceq = [];
+jac = jacobian(c,coefs)';
 
-%% gradients
-if nargout > 2
-dc = dcFun(coefs);
-
-% equality gradients
-dceq = [];
-end
+% generating function for inequality gradient
+dc = matlabFunction(jac,'Vars',{coefs});
 
 end
 

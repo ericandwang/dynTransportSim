@@ -7,9 +7,11 @@ addpath(genpath(folder))
 % iteration loops
 numIterations = 3;
 % TOPP optimization
-useObjectiveGradient = true;
-useConstraintGradient = true;
+useTOPPObjectiveGradient = true;
+useTOPPConstraintGradient = true;
 useLinearization = false;
+usePATHObjectiveGradient = false;
+usePATHConstraintGradient = true;
 % animation
 showAnimation = true;
 showSnapshots = true;
@@ -114,8 +116,8 @@ end
 % object frame y acceleration limit
 accelLim = 100;
 
-if (useConstraintGradient)
-    disp('Calculating constraint gradient functions...')
+if (useTOPPConstraintGradient)
+    disp('Calculating TOPP constraint gradient functions...')
     % calculate inequality constraint jacobian
     if (useLinearization)
         dcFun = dcGenTOPP_lin(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints,th0);
@@ -186,8 +188,8 @@ problem.ub = ub;
 problem.nonlcon = nonlcon;
 problem.solver = 'fmincon';
 problem.options = optimoptions('fmincon', ...
-    'SpecifyObjectiveGradient',useObjectiveGradient, ...
-    'SpecifyConstraintGradient',useConstraintGradient, ...
+    'SpecifyObjectiveGradient',useTOPPObjectiveGradient, ...
+    'SpecifyConstraintGradient',useTOPPConstraintGradient, ...
     'MaxFunctionEvaluations', 5000, ...
     'Display','iter');
 
@@ -311,23 +313,43 @@ ylabel('$\ddot{y}_{c} [m/s^2]$','interpreter','latex')
 zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
 title('Gravito-Inertial Wrench Constraints')
 
-%% Repathing
+%% PATH Preoptimization
 
 % initial B-spline control points
 xcoefs0 = xp.coefs';
 ycoefs0 = yp.coefs';
 coefs0 = [xcoefs0; ycoefs0];
+numCoefs = length(coefs0);
+
+if (usePATHConstraintGradient)
+    disp('Calculating PATH constraint gradient functions...')
+    % calculate inequality constraint jacobian
+    dcFun = dcGenPATH(P, r_GC, param, fCone, vec, ss0, knotVec, numCoefs, accelLim);
+    % calculate equality constraint jacobian
+else
+    dcFun = [];
+end
+
+if (usePATHObjectiveGradient)
+    disp('Calculating PATH objective gradient functions...')
+    % calculate inequality constraint jacobian
+    gradfFun = objGenPATH(P, r_GC, param, fCone, vec, ss0, knotVec, numCoefs);
+    % calculate equality constraint jacobian
+else
+    gradfFun = [];
+end
+
+%% Repathing PATH
 
 % objective function
-fun = @(coefs) objPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs);
+fun = @(coefs) objPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, gradfFun);
 
 % control point bounds
 %lb = ones(numCoefs,1).*-10;
 %ub = ones(numCoefs,1).*10;
 
 % endpoint constraints and acceleration constraints
-[basis, dbasis, ddbasis, ~] = splineBasisCoefs(knotVec, porder);
-numCoefs = length(coefs0);
+[basis, dbasis, ddbasis] = splineBasisCoefs(knotVec, porder);
 polyMultiplier = basis{1}(1,end);
 % endpoints
 Aeq = zeros(4,numCoefs);
@@ -351,7 +373,7 @@ beq = [s0(1); x_des(1); s0(3); x_des(2)];
 
 
 % nonlinear constraint function
-nonlcon = @(coefs) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, tol, accelLim);
+nonlcon = @(coefs) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, tol, dcFun, accelLim);
 
 % optimization
 problem.x0 = coefs0;
@@ -364,7 +386,10 @@ problem.lb = [];
 problem.ub = [];
 problem.nonlcon = nonlcon;
 problem.solver = 'fmincon';
-problem.options = optimoptions('fmincon', 'Display','iter');
+problem.options = optimoptions('fmincon', ...
+    'SpecifyObjectiveGradient',usePATHObjectiveGradient, ...
+    'SpecifyConstraintGradient',usePATHConstraintGradient, ... 
+    'Display','iter');
 
 % invoke solver
 disp('Replanning path...')

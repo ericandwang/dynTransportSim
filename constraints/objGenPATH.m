@@ -1,16 +1,14 @@
-function [f, gradf] = objPATH(P, r_GC, param, fCone, vec, ss, knotVec, coefs, gradfFun)
+function [df] = objGenPATH(P, r_GC, param, fCone, vec, ss, knotVec, numCoefs)
 % distance from plane method
 
 % spline construction
+syms coefs
+coefs = sym('coefs',[numCoefs,1]);
 numCoefs = length(coefs);
 xcoefs = coefs(1:numCoefs/2);
 ycoefs = coefs(numCoefs/2+1:end);
-xp = spmak(knotVec,xcoefs');
-dxp = fnder(xp,1);
-ddxp = fnder(xp,2);
-yp = spmak(knotVec,ycoefs');
-dyp = fnder(yp,1);
-ddyp = fnder(yp,2);
+[~, ~, dxp_, ddxp_] = splineDiscreteReconstruct(knotVec, xcoefs);
+[~, ~, dyp_, ddyp_] = splineDiscreteReconstruct(knotVec, ycoefs);
 
 % constants
 R_GC = norm(r_GC);
@@ -26,8 +24,8 @@ for i = 1:length(ss)
     th = P(i,3);
     dth = P(i,4);
     ddth = P(i,5);
-    ax_G = fnval(ddxp,ss(i))*ds^2 + fnval(dxp,ss(i))*dds;
-    ay_G = fnval(ddyp,ss(i))*ds^2 + fnval(dyp,ss(i))*dds;
+    ax_G = ddxp_(i)*ds^2 + dxp_(i)*dds;
+    ay_G = ddyp_(i)*ds^2 + dyp_(i)*dds;
     p = [cos(th) sin(th) -R_GC*sin(th_GC); ...
               -sin(th) cos(th) R_GC*cos(th_GC); ...
               0 0 1]*[ax_G; ay_G; ddth] + ...
@@ -39,10 +37,10 @@ for i = 1:length(ss)
     f = f - min(dist);
 end
 
-%% gradients
-if nargout > 1
-gradf = gradfFun(coefs);
-end
+jac = jacobian(f,coefs)';
+
+% generating function for objective gradient
+df = matlabFunction(jac,'Vars',{coefs});
 
 end
 

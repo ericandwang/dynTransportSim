@@ -1,4 +1,4 @@
-function [coefs, dcoefs, ddcoefs, ddImpulses] = splineBasisCoefs(knots, order)
+function [coefs, dcoefs, ddcoefs] = splineBasisCoefs(knots, order)
 
 numBasis = length(knots) - order;
 cp = eye(numBasis);
@@ -9,7 +9,6 @@ for i = 1:numBasis
     bs = spmak(knots,cp(i,:));
     dbs = fnder(bs,1);
     ddbs = fnder(bs,2);
-    ddImpulses(i,:) = ddbs.coefs;
     sp = fn2fm(bs,'pp');
     dsp = fn2fm(dbs,'pp');
     ddsp = fn2fm(ddbs,'pp');

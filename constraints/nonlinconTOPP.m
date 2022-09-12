@@ -74,5 +74,6 @@ dc = dcFun(Pmat);
 % equality gradients
 dceq = dceqFun(Pmat);
 end
+
 end
 
