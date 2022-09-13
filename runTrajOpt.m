@@ -5,13 +5,15 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 3;
+numIterations = 6;
 % TOPP optimization
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
+% PATH optimization
 usePATHObjectiveGradient = false;
 usePATHConstraintGradient = true;
+convexConeApproximation = false;
 % animation
 showAnimation = true;
 showSnapshots = true;
@@ -342,7 +344,12 @@ end
 %% Repathing PATH
 
 % objective function
-fun = @(coefs) objPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, gradfFun);
+if (convexConeApproximation)
+    [basisVectors, constraintSlopes] = changeOfBasis(fCone);
+    fun = @(coefs) objPATH_convex(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, basisVectors, constraintSlopes);
+else
+    fun = @(coefs) objPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, gradfFun);
+end
 
 % control point bounds
 %lb = ones(numCoefs,1).*-10;
