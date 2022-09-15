@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 6;
+numIterations = 1;
 % TOPP optimization
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
@@ -71,15 +71,15 @@ maxNormalForce = 10; % max normal force [N]
 
 %% Spline Generation
 collPoints = 31;
-porder = 3;
+porder = 3+1;
 sBounds = [0 1];
 
 cc = linspace(sBounds(1),sBounds(2),collPoints);
 xx = linspace(s0(1),x_des(1),collPoints);
 yy = linspace(s0(3),x_des(2),collPoints);
 
-knotVec = [ones(1,2).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,2).*sBounds(2)];
-interpPoints = linspace(sBounds(1),sBounds(2),collPoints+1);
+knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
+interpPoints = linspace(sBounds(1),sBounds(2),collPoints+porder-2);
 xp = spapi(knotVec, interpPoints, interp1(cc,xx,interpPoints));
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
