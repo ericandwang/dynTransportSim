@@ -5,15 +5,15 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 1;
-% TOPP optimization
+numIterations = 2;
+% TOPP optimization CCC fix it so that it is evaluating at collocation points
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
 % PATH optimization
-usePATHObjectiveGradient = false;
+usePATHObjectiveGradient = false; % CCC make convex path objective gradient
 usePATHConstraintGradient = true;
-convexConeApproximation = false;
+convexConeApproximation = true;
 % animation
 showAnimation = true;
 showSnapshots = true;
@@ -124,7 +124,7 @@ if (useTOPPConstraintGradient)
     if (useLinearization)
         dcFun = dcGenTOPP_lin(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints,th0);
     else
-        dcFun = dcGenTOPP(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints, accelLim);
+        dcFun = dcGenTOPP(r_GC, param, fCone, vec, xp, dxp, ddxp, yp, dyp, ddyp, ss0, evalPoints, accelLim);
     end
     % calculate equality constraint jacobian
     dceqFun = dceqGenTOPP(ss0, evalPoints);
@@ -172,10 +172,10 @@ ub = [ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
       ones(evalPoints,1).*Inf];
 
 % nonlinear constraint function
-if (useLinearization)
+if (useLinearization) % CCC not aligning with original constraint function now (decomissioned)
     nonlcon = @(P) nonlinconTOPP_lin(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun, th0);
 else
-    nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun, accelLim);
+    nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
 end
 
 % optimization
@@ -467,7 +467,16 @@ ylabel('$\ddot{y}_{c} [m/s^2]$','interpreter','latex')
 zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
 title('Gravito-Inertial Wrench Constraints')
 
-% Show difference in path
-figure, plot(fnval(xpold{iii},ss0), fnval(ypold{iii},ss0))
-hold on, plot(fnval(xp,ss0), fnval(yp,ss0))
 end
+
+%% Post Iteration Results
+% Show difference in path
+figure
+for i = 1:iii
+    hold on
+    plot(fnval(xpold{i},ss0), fnval(ypold{i},ss0))
+end
+plot(fnval(xp,ss0), fnval(yp,ss0))
+xlabel('x [m]')
+ylabel('y [m]')
+title('Path Iteration')
