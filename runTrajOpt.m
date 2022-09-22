@@ -5,8 +5,8 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 2;
-% TOPP optimization CCC fix it so that it is evaluating at collocation points
+numIterations = 5;
+% TOPP optimization
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
@@ -70,7 +70,7 @@ maxNormalForce = 10; % max normal force [N]
 [fCone, vec] = generatefCone(param,maxNormalForce);
 
 %% Spline Generation
-collPoints = 31;
+collPoints = 15;
 porder = 3+1;
 sBounds = [0 1];
 
@@ -92,7 +92,7 @@ times = zeros(numIterations,1);
 for iii = 1:numIterations
 %% TOPP Preoptimization
 % equally spaced evaluation points and initial conditions
-evalPoints = 31;
+evalPoints = collPoints*2-1;
 initialVel = 1;%1e-2;
 
 if (iii == 1)

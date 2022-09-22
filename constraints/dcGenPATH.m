@@ -58,7 +58,7 @@ for ii = 1:nPoints-1
               g*cos(th)-R_GC*dth^2*sin(th_GC); 0];
 end
 
-p = [p, pappend];
+%p = [p, pappend];
 
 % constructing linear plane constraints
 nPoints = size(p,2);
