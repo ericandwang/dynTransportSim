@@ -1,8 +1,8 @@
-function [breakPoints, splineValues, dsplineValues, ddsplineValues] = splineDiscreteReconstruct(knots, controlPoints)
+function [breakPoints, splineValues, dsplineValues, ddsplineValues] = splineDiscreteReconstruct(knots, controlPoints, evalPoints)
 
-breakPoints = unique(knots);
-vq = linspace(breakPoints(1), breakPoints(end), length(breakPoints)*2-1);
-breakPoints = interp1(breakPoints,breakPoints,vq);
+%breakPoints = unique(knots);
+%breakPoints = linspace(breakPoints(1), breakPoints(end), evalPoints);
+breakPoints = evalPoints;
 numCoefs = length(controlPoints);
 cp = eye(numCoefs);
 

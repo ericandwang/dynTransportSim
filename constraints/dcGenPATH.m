@@ -6,8 +6,8 @@ coefs = sym('coefs',[numCoefs,1]);
 numCoefs = length(coefs);
 xcoefs = coefs(1:numCoefs/2);
 ycoefs = coefs(numCoefs/2+1:end);
-[~, xp_, dxp_, ddxp_] = splineDiscreteReconstruct(knotVec, xcoefs);
-[~, yp_, dyp_, ddyp_] = splineDiscreteReconstruct(knotVec, ycoefs);
+[~, xp_, dxp_, ddxp_] = splineDiscreteReconstruct(knotVec, xcoefs, ss);
+[~, yp_, dyp_, ddyp_] = splineDiscreteReconstruct(knotVec, ycoefs, ss);
 
 % constants
 R_GC = norm(r_GC);

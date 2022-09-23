@@ -49,7 +49,7 @@ s0 = [0; ...        % x_G -5
       0; ...        % dx_G
       0; ...        % y_G 5
       0; ...        % dy_G
-      -pi/4; ...        % th
+      0; ...        % th
       0; ...        % dth
       r_GC; ...     % r_GC
       0; ...        % dr_GC
@@ -92,7 +92,7 @@ times = zeros(numIterations,1);
 for iii = 1:numIterations
 %% TOPP Preoptimization
 % equally spaced evaluation points and initial conditions
-evalPoints = collPoints*2-1;
+evalPoints = (collPoints-1)*2+1;
 initialVel = 1;%1e-2;
 
 if (iii == 1)
@@ -149,19 +149,24 @@ Aineq = [Aineq zeros(size(Aineq,1),evalPoints*5)];
 bineq = zeros(evalPoints-1,1);
 
 % linear equality constraints
-Aeq = zeros(4,length(P0));
+Aeq = zeros(8,length(P0));
 Aeq(1,1) = fnval(dxp,sBounds(1)); % velocity endpoints
 Aeq(2,evalPoints) = fnval(dxp,sBounds(2));
 Aeq(3,1) = fnval(dyp,sBounds(1));
 Aeq(4,evalPoints) = fnval(dyp,sBounds(2));
 Aeq(5,2*evalPoints+1) = 1; % angle endpoints
 Aeq(6,3*evalPoints) = 1;
-Aeq(7,4*evalPoints+1) = 1; % angular velocity endpoints
-Aeq(8,5*evalPoints) = 1;
+Aeq(7,3*evalPoints+1) = 1; % angular velocity endpoints
+Aeq(8,4*evalPoints) = 1;
 beq = [s0(2); dx_des(1); ...
        s0(4); dx_des(2); ...
        s0(5); x_des(3); ...
        s0(6); dx_des(3)];
+
+% CCC removing terminal velocity constraints
+%selectedRows = [1 3 5 6 7];
+%Aeq = Aeq(selectedRows,:);
+%beq = beq(selectedRows);
 
 % lower and upper bounds
 lb = [zeros(evalPoints,1); ones(evalPoints,1).*-Inf; ...
@@ -365,6 +370,7 @@ Aeq(2,numCoefs/2) = polyMultiplier;
 Aeq(3,numCoefs/2+1) = polyMultiplier;
 Aeq(4,end) = polyMultiplier;
 beq = [s0(1); x_des(1); s0(3); x_des(2)];
+% add in constraints for velocity endpoints IMPORTANT CCC
 % accelerations CCC not implemented
 %Aeq2 = [ddImpulses' zeros(size(ddImpulses')); ...
 %        zeros(size(ddImpulses')) ddImpulses'; ...
@@ -471,12 +477,13 @@ end
 
 %% Post Iteration Results
 % Show difference in path
+splot = linspace(ss0(1),ss0(end),length(ss0)*5);
 figure
 for i = 1:iii
     hold on
-    plot(fnval(xpold{i},ss0), fnval(ypold{i},ss0))
+    plot(fnval(xpold{i},splot), fnval(ypold{i},splot))
 end
-plot(fnval(xp,ss0), fnval(yp,ss0))
+plot(fnval(xp,splot), fnval(yp,splot))
 xlabel('x [m]')
 ylabel('y [m]')
 title('Path Iteration')
