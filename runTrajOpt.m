@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 5;
+numIterations = 3;
 % TOPP optimization
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
@@ -59,7 +59,7 @@ s0 = [0; ...        % x_G -5
 
 % desired end position
 x_des = [5; ... % x
-         4; ... % y
+         0; ... % y
          0];   % th
 dx_des = [0; ... % dx
           0; ... % dy
@@ -84,6 +84,7 @@ xp = spapi(knotVec, interpPoints, interp1(cc,xx,interpPoints));
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
 yp = spapi(knotVec, interpPoints, interp1(cc,yy,interpPoints));
+yp = spmak(yp.knots,[0 ones(1, length(yp.coefs)-2) 0]); % CCC remove immediately
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
@@ -92,7 +93,7 @@ times = zeros(numIterations,1);
 for iii = 1:numIterations
 %% TOPP Preoptimization
 % equally spaced evaluation points and initial conditions
-evalPoints = (collPoints-1)*2+1;
+evalPoints = (collPoints-1)*3+1;
 initialVel = 1;%1e-2;
 
 if (iii == 1)
