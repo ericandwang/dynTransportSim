@@ -1,11 +1,26 @@
-function [th, dth, ddth, tTotal] = intermediatePlan(th0, dth0, fCone, vec, r_GC, g, type)
+function [th, dth, ddth, tTotal] = intermediatePlan(s0, x_des, dx_des, fCone, vec, g, type, knotVec, porder)
 % Generating a trajectory that takes an statically infeasible IC to a
 % statically feasible intermediate point (type 1) OR a statically feasible
 % intermediate point to a statically infeasible FC (type -1)
 
-% defining magnitude of angular acceleration CCC turn into parameter
-angAccel = 1;
+% Defining initial and desired values
+if (sign(type) > 0)
+    x0 = s0(1);
+    dx0 = s0(2);
+    y0 = s0(3);
+    dy0 = s0(4);
+    th0 = s0(5);
+    dth0 = s0(6);
+    r_GC = s0(7:8,1);
+    xd = x_des(1);
+    yd = x_des(2);
+else
+end
+
+% defining number of discrete points and linear acceleration limit and u (bang bang angular acceleration) CCC user input
+u = 20;
 numPoints = 100;
+linAccelLim = 80;
 
 % constants
 R_GC = norm(r_GC);
@@ -16,12 +31,14 @@ th_GC = angle(r_GC(1) + 1i*r_GC(2));
 accelOrder = 0;
 
 if (sign(type) > 0) % going from IC to intermediate point
-    if (dth0 < 0 && th0 <= 1/2*dth0^2) || ...
-            (dth0 >= 0 && th0 < -1/2*dth0^2)
+    if (dth0 < 0 && th0 <= 1/(2*u)*dth0^2) || ...
+            (dth0 >= 0 && th0 < -1/(2*u)*dth0^2)
         accelOrder = 1;
-        ddth0 = angAccel;
+        ddth0 = u;
         ddth1 = -ddth0;
-        t0 = roots([1/2*(ddth0^2+ddth0) dth0*ddth0 + dth0 th0 + 1/2*dth0^2]);
+        t0 = roots([ddth0, ...
+                    dth0*ddth0 + dth0, ...
+                    th0 + 1/(2*ddth0)*dth0^2]);
         t0 = max(t0);
         dth1 = dth0 + ddth0*t0;
         th1 = th0 + dth0*t0 + 1/2*ddth0*t0^2;
@@ -42,7 +59,7 @@ if (sign(type) > 0) % going from IC to intermediate point
         t1 = 0;
     else
         accelOrder = -1;
-        ddth0 = -angAccel;
+        ddth0 = -u;
         ddth1 = -ddth0;
         t0 = roots([1/2*(-ddth0^2+ddth0) -dth0*ddth0 + dth0 th0 - 1/2*dth0^2]);
         t0 = max(t0);
@@ -62,19 +79,20 @@ if (sign(type) > 0) % going from IC to intermediate point
 
     % Discretizing time
     t = linspace(0,tTotal,numPoints);
+    dt = t(2) - t(1);
 
     % Defining boundary points for QP
     boundaryPoints = zeros(2,4);
     if (accelOrder == 1)
-        boundaryPoints(:,1) = fCone(1:2,4)*angAccel*accelOrder/fCone(3,4);
-        boundaryPoints(:,2) = fCone(1:2,3)*angAccel*accelOrder/fCone(3,3);
-        boundaryPoints(:,3) = fCone(1:2,1)*angAccel*accelOrder/fCone(3,1);
-        boundaryPoints(:,4) = fCone(1:2,2)*angAccel*accelOrder/fCone(3,2);
+        boundaryPoints(:,1) = fCone(1:2,4)*u*accelOrder/fCone(3,4);
+        boundaryPoints(:,2) = fCone(1:2,3)*u*accelOrder/fCone(3,3);
+        boundaryPoints(:,3) = fCone(1:2,1)*u*-accelOrder/fCone(3,1);
+        boundaryPoints(:,4) = fCone(1:2,2)*u*-accelOrder/fCone(3,2);
     elseif (accelOrder == -1)
-        boundaryPoints(:,1) = fCone(1:2,1)*angAccel*accelOrder/fCone(3,1);
-        boundaryPoints(:,2) = fCone(1:2,2)*angAccel*accelOrder/fCone(3,2);
-        boundaryPoints(:,3) = fCone(1:2,4)*angAccel*accelOrder/fCone(3,4);
-        boundaryPoints(:,4) = fCone(1:2,3)*angAccel*accelOrder/fCone(3,3);
+        boundaryPoints(:,1) = fCone(1:2,1)*u*accelOrder/fCone(3,1);
+        boundaryPoints(:,2) = fCone(1:2,2)*u*accelOrder/fCone(3,2);
+        boundaryPoints(:,3) = fCone(1:2,4)*u*-accelOrder/fCone(3,4);
+        boundaryPoints(:,4) = fCone(1:2,3)*u*-accelOrder/fCone(3,3);
     else
     end
     boundarySlopes = [(boundaryPoints(2,2)-boundaryPoints(2,1))/(boundaryPoints(1,2)-boundaryPoints(1,1)); ...
@@ -88,11 +106,11 @@ if (sign(type) > 0) % going from IC to intermediate point
 
     % line constraints
     Aline1 = [-boundarySlopes(3) -1; boundarySlopes(3) -1; boundarySlopes(1) -1];
-    bline1 = [boundaryPoints(2,1)-(-boundarySlopes(3))*boundaryPoints(1,1); ...
+    bline1 = -[boundaryPoints(2,1)-(-boundarySlopes(3))*boundaryPoints(1,1); ...
               boundaryPoints(2,2)-boundarySlopes(3)*boundaryPoints(1,2); ...
               boundaryPoints(2,1)-boundarySlopes(1)*boundaryPoints(1,1)];
     Aline2 = [-boundarySlopes(3) -1; boundarySlopes(3) -1; boundarySlopes(2) -1];
-    bline2 = [boundaryPoints(2,3)-(-boundarySlopes(3))*boundaryPoints(1,3); ...
+    bline2 = -[boundaryPoints(2,3)-(-boundarySlopes(3))*boundaryPoints(1,3); ...
               boundaryPoints(2,4)-boundarySlopes(3)*boundaryPoints(1,4); ...
               boundaryPoints(2,1)-boundarySlopes(2)*boundaryPoints(1,1)];
 
@@ -116,33 +134,83 @@ if (sign(type) > 0) % going from IC to intermediate point
     end
     A = blkdiag(Acell{:});
 
+    prob = optimproblem('ObjectiveSense','min');
+    a = optimvar('a',numPoints*2,1,'LowerBound',ones(numPoints*2,1)*-linAccelLim, ...
+        'UpperBound', ones(numPoints*2,1)*linAccelLim);
+    prob.Constraints.cons1 = A*a <= b;
+    objx = -xd + x0 + numPoints*dx0*dt;
+    objy = -yd + y0 + numPoints*dy0*dt;
+    for i = 1:numPoints
+        objx = objx + (1/2+numPoints-i)*a(2*i-1)*dt^2;
+        objy = objy + (1/2+numPoints-i)*a(2*i)*dt^2;
+    end
+    prob.Objective = objx^2 + objy^2;
+    opts = optimoptions('quadprog');
+    %a0 = zeros(numPoints*2,1);
+    %a00 = struct('a',a0);
+    [asol, value] = solve(prob,'options',opts);
 
-    % CCC change to QP determining discrete ax_G and ay_G trajectory
-%     p(:,ii) = [cos(th) sin(th) -R_GC*sin(th_GC); ...
-%               -sin(th) cos(th) R_GC*cos(th_GC); ...
-%               0 0 1]*[ax_G; ay_G; ddth] + ...
-%               [g*sin(th)-R_GC*dth^2*cos(th_GC); ...
-%               g*cos(th)-R_GC*dth^2*sin(th_GC); 0];
-%     nPoints = size(p,2);
-%     dim = size(fCone,2);
-%     c = zeros(nPoints*dim,1);
-%     for j = 1:nPoints
-%         for i = 1:dim
-%             c(i + dim*(j-1)) = dot(vec(:,i),p(:,j)-fCone(:,i)) + norm(vec(:,i))*tol;
-%         end
-%     end
+    % Retrieving linear acceleration solution
+    ax = asol.a(1:2:end);
+    ay = asol.a(2:2:end);
+
+    % Plotting gravito inertial wrench constraints
+    figure(100)
+    hold off
+    patch([0; fCone(1,1); fCone(1,2)],[0;fCone(2,1);fCone(2,2)],[0;fCone(3,1);fCone(3,2)],[0.5,0,0.5],'FaceAlpha',0.1)
+    hold on
+    patch([0; fCone(1,2); fCone(1,3)],[0;fCone(2,2);fCone(2,3)],[0;fCone(3,2);fCone(3,3)],[0.5,0,0.5],'FaceAlpha',0.1)
+    patch([0; fCone(1,3); fCone(1,4)],[0;fCone(2,3);fCone(2,4)],[0;fCone(3,3);fCone(3,4)],[0.5,0,0.5],'FaceAlpha',0.1)
+    patch([0; fCone(1,4); fCone(1,1)],[0;fCone(2,4);fCone(2,1)],[0;fCone(3,4);fCone(3,1)],[0.5,0,0.5],'FaceAlpha',0.1)
+    p = zeros(3,numPoints-1);
+    for i = 1:numPoints-1
+        th1 = th(t(i));
+        dth1 = dth(t(i));
+        ddth1 = ddth(t(i));
+        ax_G = ax(i);
+        ay_G = ay(i);
+        p(:,i) = [cos(th1) sin(th1) -R_GC*sin(th_GC); ...
+                  -sin(th1) cos(th1) R_GC*cos(th_GC); ...
+                  0 0 1]*[ax_G; ay_G; ddth1] + ...
+                  [g*sin(th1)-R_GC*dth1^2*cos(th_GC); ...
+                  g*cos(th1)-R_GC*dth1^2*sin(th_GC); 0];
+    end
+    scatter3(p(1,1),p(2,1),p(3,1),'k');
+    plot3(p(1,:),p(2,:),p(3,:),'b')
+    xlabel('$\ddot{x}_{c} [m/s^2]$','interpreter','latex')
+    ylabel('$\ddot{y}_{c} [m/s^2]$','interpreter','latex')
+    zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
+    title('Gravito-Inertial Wrench Constraints')
+
+    x = zeros(numPoints+1,1);
+    vx = zeros(numPoints+1,1);
+    x(1) = x0;
+    vx(1) = dx0;
+    y = zeros(numPoints+1,1);
+    vy = zeros(numPoints+1,1);
+    y(1) = y0;
+    vy(1) = dy0;
+    for i = 1:length(x)-1
+        x(i+1) = x(i) + vx(i)*dt + 1/2*ax(i)*dt^2;
+        vx(i+1) = vx(i) + ax(i)*dt;
+        y(i+1) = y(i) + vy(i)*dt + 1/2*ay(i)*dt^2;
+        vy(i+1) = vy(i) + ay(i)*dt;
+    end
+
+    % Plotting path
+    figure(101), hold off, plot(x,y);
+    hold on, scatter(x(floor(length(x)/2)),y(floor(length(y)/2)))
+
+    % Obtaining path
+    s = linspace(0,1,length(x));
+    xp = spap2(knotVec, porder, s, x);
+    yp = spap2(knotVec, porder, s, x);
 
 else % CCC TODO going from intermediate point to FC
     t0 = 0;
     t1 = 0;
 end
 
-
-%% Helper functions
-
-    function hi = hello(x)
-        hi = x^2;
-    end
 
 end
 
