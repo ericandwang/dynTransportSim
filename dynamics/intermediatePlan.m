@@ -155,7 +155,7 @@ if (sign(type) > 0) % going from IC to intermediate point
     ay = asol.a(2:2:end);
 
     % Plotting gravito inertial wrench constraints
-    figure(100)
+    figure(200)
     hold off
     patch([0; fCone(1,1); fCone(1,2)],[0;fCone(2,1);fCone(2,2)],[0;fCone(3,1);fCone(3,2)],[0.5,0,0.5],'FaceAlpha',0.1)
     hold on
