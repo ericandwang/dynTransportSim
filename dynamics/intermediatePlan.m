@@ -1,4 +1,4 @@
-function [th, dth, ddth, tTotal] = intermediatePlan(s0, x_des, dx_des, fCone, vec, g, type, knotVec, porder)
+function [th, dth, ddth, tTotal, xp, yp] = intermediatePlan(s0, x_des, dx_des, fCone, vec, g, type, knotVec, porder)
 % Generating a trajectory that takes an statically infeasible IC to a
 % statically feasible intermediate point (type 1) OR a statically feasible
 % intermediate point to a statically infeasible FC (type -1)
@@ -145,7 +145,7 @@ if (sign(type) > 0) % going from IC to intermediate point
         objy = objy + (1/2+numPoints-i)*a(2*i)*dt^2;
     end
     prob.Objective = objx^2 + objy^2;
-    opts = optimoptions('quadprog');
+    opts = optimoptions('lsqlin');
     %a0 = zeros(numPoints*2,1);
     %a00 = struct('a',a0);
     [asol, value] = solve(prob,'options',opts);
@@ -197,14 +197,14 @@ if (sign(type) > 0) % going from IC to intermediate point
         vy(i+1) = vy(i) + ay(i)*dt;
     end
 
-    % Plotting path
-    figure(101), hold off, plot(x,y);
-    hold on, scatter(x(floor(length(x)/2)),y(floor(length(y)/2)))
+    % Plotting path debug
+    %figure(1001), hold off, plot(x,y);
+    %hold on, scatter(x(floor(length(x)/2)),y(floor(length(y)/2)))
 
     % Obtaining path
     s = linspace(0,1,length(x));
     xp = spap2(knotVec, porder, s, x);
-    yp = spap2(knotVec, porder, s, x);
+    yp = spap2(knotVec, porder, s, y);
 
 else % CCC TODO going from intermediate point to FC
     t0 = 0;

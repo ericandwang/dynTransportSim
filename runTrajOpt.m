@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 3;
+numIterations = 1;
 % TOPP optimization
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
@@ -49,7 +49,7 @@ s0 = [0; ...        % x_G -5
       0; ...        % dx_G
       0; ...        % y_G 5
       0; ...        % dy_G
-      0; ...        % th
+      -pi; ...        % th (0)
       0; ...        % dth
       r_GC; ...     % r_GC
       0; ...        % dr_GC
@@ -88,6 +88,25 @@ yp = spmak(yp.knots,[0 ones(1, length(yp.coefs)-2) 0]); % CCC remove immediately
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
+%% Dynamically Feasible Spline Preinitialization
+% TOPP evaluation options
+[th_pre, dth_pre, ddth_pre, tTotal_pre, xp_pre, yp_pre] = intermediatePlan(s0, x_des, dx_des, fCone, vec, g, 1, knotVec, porder);
+xp = xp_pre;
+dxp = fnder(xp,1);
+ddxp = fnder(xp,2);
+yp = yp_pre;
+dyp = fnder(yp,1);
+ddyp = fnder(yp,2);
+
+% CCC just testing dynamic phase
+% desired end position
+x_des = [fnval(xp,1); ... % x
+         fnval(yp,1); ... % y
+         th_pre(tTotal_pre)];   % th
+dx_des = [fnval(dxp,1)*1/tTotal_pre; ... % dx
+          fnval(dyp,1)*1/tTotal_pre; ... % dy
+          dth_pre(tTotal_pre)];    % dth
+
 %% Iteration (TOPP <-> path)
 times = zeros(numIterations,1);
 for iii = 1:numIterations
@@ -97,15 +116,28 @@ evalPoints = (collPoints-1)*3+1;
 initialVel = 1;%1e-2;
 
 if (iii == 1)
+%     ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
+%     dss0 = ones(evalPoints,1).*initialVel;
+%     ddss0 = zeros(evalPoints,1);
+%     for ii = 1:length(ddss0)-1
+%         ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
+%     end
+%     th0 = ones(evalPoints,1).*s0(5);
+%     dth0 = zeros(evalPoints,1);
+%     ddth0 = zeros(evalPoints,1);
+%     P0 = [dss0; ddss0; th0; dth0; ddth0];
+
+    % CCC replaced naive initialization with feasible spline
+    % preinitialization results
     ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
-    dss0 = ones(evalPoints,1).*initialVel;
+    dss0 = ones(evalPoints,1).*1/tTotal_pre;
     ddss0 = zeros(evalPoints,1);
     for ii = 1:length(ddss0)-1
         ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
     end
-    th0 = ones(evalPoints,1).*s0(5);
-    dth0 = zeros(evalPoints,1);
-    ddth0 = zeros(evalPoints,1);
+    th0 = th_pre(ss0*tTotal_pre);
+    dth0 = dth_pre(ss0*tTotal_pre);
+    ddth0 = ddth_pre(ss0*tTotal_pre);
     P0 = [dss0; ddss0; th0; dth0; ddth0];
 else
     P0 = psolve;
