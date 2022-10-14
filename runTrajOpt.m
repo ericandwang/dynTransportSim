@@ -90,7 +90,7 @@ ddyp = fnder(yp,2);
 
 %% Dynamically Feasible Spline Preinitialization
 % TOPP evaluation options
-[th_pre, dth_pre, ddth_pre, tTotal_pre, xp_pre, yp_pre] = intermediatePlan(s0, x_des, dx_des, fCone, vec, g, 1, knotVec, porder);
+[th_pre, dth_pre, ddth_pre, tTotal_pre, xp_pre, yp_pre] = intermediatePlan(s0, x_des, dx_des, fCone, vec, param, 1, knotVec, porder);
 xp = xp_pre;
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
@@ -106,6 +106,39 @@ x_des = [fnval(xp,1); ... % x
 dx_des = [fnval(dxp,1)*1/tTotal_pre; ... % dx
           fnval(dyp,1)*1/tTotal_pre; ... % dy
           dth_pre(tTotal_pre)];    % dth
+
+% Appending path with naive straight line approach
+vAngRatio = fnval(dyp,1)/fnval(dxp,1);
+xdisp = (fnval(xp,1) - fnval(xp,0))*1.5;
+x1end = fnval(xp,1) + xdisp;
+y1end = fnval(yp,1) + xdisp*vAngRatio;
+tempNumPoints = 100;
+x = fnval(xp,linspace(0,1,tempNumPoints));
+y = fnval(yp,linspace(0,1,tempNumPoints));
+x1 = linspace(x(end),x1end,tempNumPoints); x1 = x1(2:end);
+y1 = linspace(y(end),y1end,tempNumPoints); y1 = y1(2:end);
+
+sBounds = [sBounds(1) sBounds(2)*2];
+collPoints = collPoints + 7;% + 5; % CCC can increase
+knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
+s = [linspace(0,1,length(x)), linspace(1,2,length(x1))];
+xp1 = spap2(knotVec, porder, s, [x,x1]);
+yp1 = spap2(knotVec, porder, s, [y,y1]);
+
+% CCC now testing static stable phase
+xp = xp1;
+dxp = fnder(xp,1);
+ddxp = fnder(xp,2);
+yp = yp1;
+dyp = fnder(yp,1);
+ddyp = fnder(yp,2);
+
+x_des = [fnval(xp,sBounds(2)); ... % x
+         fnval(yp,sBounds(2)); ... % y
+         0];   % th
+dx_des = [0; ... % dx
+          0; ... % dy
+          0];    % dth
 
 %% Iteration (TOPP <-> path)
 times = zeros(numIterations,1);

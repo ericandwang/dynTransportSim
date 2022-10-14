@@ -1,7 +1,11 @@
-function [th, dth, ddth, tTotal, xp, yp] = intermediatePlan(s0, x_des, dx_des, fCone, vec, g, type, knotVec, porder)
+function [th, dth, ddth, tTotal, xp, yp] = intermediatePlan(s0, x_des, dx_des, fCone, vec, param, type, knotVec, porder)
 % Generating a trajectory that takes an statically infeasible IC to a
 % statically feasible intermediate point (type 1) OR a statically feasible
 % intermediate point to a statically infeasible FC (type -1)
+
+% Parameters
+g = param(9);
+mu = param(10);
 
 % Defining initial and desired values
 if (sign(type) > 0)
@@ -205,6 +209,26 @@ if (sign(type) > 0) % going from IC to intermediate point
     s = linspace(0,1,length(x));
     xp = spap2(knotVec, porder, s, x);
     yp = spap2(knotVec, porder, s, y);
+
+    % Appending path to drive vx and vy to 0 (statically stable section)
+    % CCC causes unbounded path to exit workspace due to limited
+    % acceleration UNUSED DELETE
+%     xend = x(end);
+%     yend = y(end);
+%     vxend = vx(end);
+%     vyend = vy(end);
+%     if (vxend > 0 && vyend > 0)
+%         A = [-1 -mu; -1 vxend/vyend];
+%         b = [mu*g; 0];
+%         a1 = A\b;
+%     else
+%         a1 = [0;0]; % CCC fix for other cases
+%     end
+%     ax1 = a1(1); ay1 = a1(2);
+%     tTotal1 = abs(vxend/ax1);
+%     x1end = xend + vxend*tTotal1 + 1/2*ax1*tTotal1^2;
+%     y1end = yend + vyend*tTotal1 + 1/2*ay1*tTotal1^2;
+
 
 else % CCC TODO going from intermediate point to FC
     t0 = 0;
