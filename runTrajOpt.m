@@ -119,7 +119,7 @@ x1 = linspace(x(end),x1end,tempNumPoints); x1 = x1(2:end);
 y1 = linspace(y(end),y1end,tempNumPoints); y1 = y1(2:end);
 
 sBounds = [sBounds(1) sBounds(2)*2];
-collPoints = collPoints + 7;% + 5; % CCC can increase
+collPoints = collPoints + 5; % CCC can increase to + 7
 knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
 s = [linspace(0,1,length(x)), linspace(1,2,length(x1))];
 xp1 = spap2(knotVec, porder, s, [x,x1]);
@@ -133,7 +133,7 @@ yp = yp1;
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
-x_des = [fnval(xp,sBounds(2)); ... % x
+x_des = [fnval(xp,sBounds(2))-1; ... % x
          fnval(yp,sBounds(2)); ... % y
          0];   % th
 dx_des = [0; ... % dx
