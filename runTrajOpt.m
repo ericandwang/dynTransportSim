@@ -306,7 +306,7 @@ th = cumsum(dth.*dt)' + s0(5);
 if (showAnimation)
     % initialize animation
     CoR_radius = 0.005;
-    figure(1000); clf;
+    figure(1002); clf;
     axis equal
     
     % show animation
@@ -330,7 +330,11 @@ if (showAnimation)
             axis manual
             plot(x_G(1:i),y_G(1:i))
         else
-            plot(x_G(1:i),y_G(1:i),'--')
+            if (t(i) <= tTotal_pre)
+                plot(x_G(1:i),y_G(1:i),'b--')
+            else
+                plot(x_G(i-1:i),y_G(i-1:i),'r--')
+            end
             xlim([min([x_G;y_G])-1 max([x_G;y_G])+1])
             ylim([min([x_G;y_G])-1 max([x_G;y_G])+1])
         end

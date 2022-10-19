@@ -1,7 +1,7 @@
 function [f, gradf] = objTOPP(P,evalPoints)
 
 % Objective function
-% Integrating (summation) of inverse velocities
+% Integrating (summation) of inverse velocities (10/19 now averaging)
 %f = sum(1./P(2:evalPoints-1,1));
 f = sum(1./(P(1:evalPoints-1,1)+P(2:evalPoints,1)));
 

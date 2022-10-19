@@ -53,27 +53,27 @@ for ii = 1:nPoints
               g*cos(th)-R_GC*dth^2*sin(th_GC); 0];
 end
 
-% appending collocation points
-h = ss(2)-ss(1);
-for ii = 1:nPoints-1
-    dds = ddss(ii);
-    ds = sqrt(h*dds + dss(ii)^2);
-    dx = -3/(2*h)*(xp_(ii)-xp_(ii+1)) - 1/4*(dxp_(ii)+dxp_(ii+1));
-    dy = -3/(2*h)*(yp_(ii)-yp_(ii+1)) - 1/4*(dyp_(ii)+dyp_(ii+1));
-    ddx = (ddxp_(ii)+ddxp_(ii+1))/2;
-    ddy = (ddyp_(ii)+ddyp_(ii+1))/2;
-    dt = h/(dss(ii)+ds);
-    ddth = ddths(ii);
-    dth = dths(ii) + ddth*dt;
-    th = ths(ii) + dth*dt + 1/2*ddth*dt^2;
-    ax_G = ddx*ds^2 + dx*dds;
-    ay_G = ddy*ds^2 + dy*dds;
-    pappend(:,ii) = [cos(th) sin(th) -R_GC*sin(th_GC); ...
-              -sin(th) cos(th) R_GC*cos(th_GC); ...
-              0 0 1]*[ax_G; ay_G; ddth] + ...
-              [g*sin(th)-R_GC*dth^2*cos(th_GC); ...
-              g*cos(th)-R_GC*dth^2*sin(th_GC); 0];
-end
+% appending collocation points CCC unused
+% h = ss(2)-ss(1);
+% for ii = 1:nPoints-1
+%     dds = ddss(ii);
+%     ds = sqrt(h*dds + dss(ii)^2);
+%     dx = -3/(2*h)*(xp_(ii)-xp_(ii+1)) - 1/4*(dxp_(ii)+dxp_(ii+1));
+%     dy = -3/(2*h)*(yp_(ii)-yp_(ii+1)) - 1/4*(dyp_(ii)+dyp_(ii+1));
+%     ddx = (ddxp_(ii)+ddxp_(ii+1))/2;
+%     ddy = (ddyp_(ii)+ddyp_(ii+1))/2;
+%     dt = h/(dss(ii)+ds);
+%     ddth = ddths(ii);
+%     dth = dths(ii) + ddth*dt;
+%     th = ths(ii) + dth*dt + 1/2*ddth*dt^2;
+%     ax_G = ddx*ds^2 + dx*dds;
+%     ay_G = ddy*ds^2 + dy*dds;
+%     pappend(:,ii) = [cos(th) sin(th) -R_GC*sin(th_GC); ...
+%               -sin(th) cos(th) R_GC*cos(th_GC); ...
+%               0 0 1]*[ax_G; ay_G; ddth] + ...
+%               [g*sin(th)-R_GC*dth^2*cos(th_GC); ...
+%               g*cos(th)-R_GC*dth^2*sin(th_GC); 0];
+% end
 
 %p = [p, pappend];
 
