@@ -6,12 +6,14 @@ addpath(genpath(folder))
 %% Options
 % iteration loops
 numIterations = 1;
+% Gen files
+genFiles = 0;
 % TOPP optimization
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
 % PATH optimization
-usePATHObjectiveGradient = false; % CCC make convex path objective gradient
+usePATHObjectiveGradient = true;
 usePATHConstraintGradient = true;
 convexConeApproximation = true;
 % animation
@@ -89,8 +91,9 @@ dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
 %% Dynamically Feasible Spline Preinitialization
+disp('Calculating dynamically feasible warm start...')
 % TOPP evaluation options
-[th_pre, dth_pre, ddth_pre, tTotal_pre, xp_pre, yp_pre] = intermediatePlan(s0, x_des, dx_des, fCone, vec, param, 1, knotVec, porder);
+[th_pre, dth_pre, ddth_pre, tTotal_pre, xp_pre, yp_pre, x, vx, ax, y, vy, ay] = intermediatePlan(s0, x_des, dx_des, fCone, vec, param, 1, knotVec, porder);
 xp = xp_pre;
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
@@ -109,7 +112,7 @@ dx_des = [fnval(dxp,1)*1/tTotal_pre; ... % dx
 
 % Appending path with naive straight line approach
 vAngRatio = fnval(dyp,1)/fnval(dxp,1);
-xdisp = (fnval(xp,1) - fnval(xp,0))*1.5;
+xdisp = (fnval(xp,1) - fnval(xp,0))*1.5; % arbitrary distance
 x1end = fnval(xp,1) + xdisp;
 y1end = fnval(yp,1) + xdisp*vAngRatio;
 tempNumPoints = 100;
@@ -133,19 +136,41 @@ yp = yp1;
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
-x_des = [fnval(xp,sBounds(2))-1; ... % x
+x_des = [fnval(xp,sBounds(2)); ... % x
          fnval(yp,sBounds(2)); ... % y
          0];   % th
 dx_des = [0; ... % dx
           0; ... % dy
           0];    % dth
 
+%% TOPP/PATH Generating Analytical Gradient Functions
+% number of constraint evaluation points
+evalPoints = (collPoints-1)*3+1;
+ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
+% object frame y acceleration limit
+accelLim = 100;
+
+if (genFiles)
+    disp('Calculating TOPP constraint gradient functions...')
+    dcGenTOPP3(r_GC, param, fCone, vec, evalPoints, accelLim);
+    dceqGenTOPP2(ss0, evalPoints);
+
+    disp('Calculating PATH constraint gradient functions...')
+    xcoefs0 = xp.coefs';
+    ycoefs0 = yp.coefs';
+    coefs0 = [xcoefs0; ycoefs0];
+    numCoefs = length(coefs0);
+    %dcGenPATH2()
+    disp('Calculating PATH objective gradient functions...')
+    [basisVectors, constraintSlopes] = changeOfBasis(fCone);
+    %objGenPATH_convex2()
+end
+
 %% Iteration (TOPP <-> path)
 times = zeros(numIterations,1);
 for iii = 1:numIterations
 %% TOPP Preoptimization
 % equally spaced evaluation points and initial conditions
-evalPoints = (collPoints-1)*3+1;
 initialVel = 1;%1e-2;
 
 if (iii == 1)
@@ -162,7 +187,6 @@ if (iii == 1)
 
     % CCC replaced naive initialization with feasible spline
     % preinitialization results
-    ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
     dss0 = ones(evalPoints,1).*1/tTotal_pre;
     ddss0 = zeros(evalPoints,1);
     for ii = 1:length(ddss0)-1
@@ -181,19 +205,18 @@ else
     ddth0 = psolve(4*evalPoints+1:5*evalPoints);
 end
 
-% object frame y acceleration limit
-accelLim = 100;
-
 if (useTOPPConstraintGradient)
-    disp('Calculating TOPP constraint gradient functions...')
     % calculate inequality constraint jacobian
-    if (useLinearization)
-        dcFun = dcGenTOPP_lin(r_GC, param, fCone, vec, dxp, ddxp, dyp, ddyp, ss0, evalPoints,th0);
-    else
-        dcFun = dcGenTOPP(r_GC, param, fCone, vec, xp, dxp, ddxp, yp, dyp, ddyp, ss0, evalPoints, accelLim);
-    end
+    %dcFun = dcGenTOPP(r_GC, param, fCone, vec, xp, dxp, ddxp, yp, dyp, ddyp, ss0, evalPoints, accelLim);
+    dxp_ = fnval(dxp,ss0);
+    ddxp_ = fnval(ddxp,ss0);
+    dyp_ = fnval(dyp,ss0);
+    ddyp_ = fnval(ddyp,ss0);
+    splines = [dxp_; ddxp_; dyp_; ddyp_];
+    dcFun = @(states) dcFunGen(states, splines);
     % calculate equality constraint jacobian
-    dceqFun = dceqGenTOPP(ss0, evalPoints);
+    %dceqFun = dceqGenTOPP(ss0, evalPoints);
+    dceqFun = @(states) dceqFunGen(states);
 else
     dcFun = [];
     dceqFun = [];
@@ -330,11 +353,7 @@ if (showAnimation)
             axis manual
             plot(x_G(1:i),y_G(1:i))
         else
-            if (t(i) <= tTotal_pre)
-                plot(x_G(1:i),y_G(1:i),'b--')
-            else
-                plot(x_G(i-1:i),y_G(i-1:i),'r--')
-            end
+            plot(x_G(1:i),y_G(1:i),'--')
             xlim([min([x_G;y_G])-1 max([x_G;y_G])+1])
             ylim([min([x_G;y_G])-1 max([x_G;y_G])+1])
         end
@@ -407,10 +426,18 @@ else
     dcFun = [];
 end
 
+if (convexConeApproximation)
+    [basisVectors, constraintSlopes] = changeOfBasis(fCone);
+end
+
 if (usePATHObjectiveGradient)
     disp('Calculating PATH objective gradient functions...')
     % calculate inequality constraint jacobian
-    gradfFun = objGenPATH(P, r_GC, param, fCone, vec, ss0, knotVec, numCoefs);
+    if (convexConeApproximation)
+        gradfFun = objGenPATH_convex(P, r_GC, param, ss0, knotVec, numCoefs, basisVectors, constraintSlopes);
+    else
+        gradfFun = objGenPATH(P, r_GC, param, fCone, vec, ss0, knotVec, numCoefs);
+    end
     % calculate equality constraint jacobian
 else
     gradfFun = [];
@@ -420,8 +447,7 @@ end
 
 % objective function
 if (convexConeApproximation)
-    [basisVectors, constraintSlopes] = changeOfBasis(fCone);
-    fun = @(coefs) objPATH_convex(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, basisVectors, constraintSlopes);
+    fun = @(coefs) objPATH_convex(P, r_GC, param, ss0, knotVec, coefs, basisVectors, constraintSlopes, gradfFun);
 else
     fun = @(coefs) objPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, gradfFun);
 end

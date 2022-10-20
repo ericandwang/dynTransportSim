@@ -1,5 +1,5 @@
-function dc = dcGenTOPP2(r_GC, param, fCone, vec, xp, dxp, ddxp, yp, dyp, ddyp, ss, nPoints, accelLim)
-% More efficient way of generating gradient
+function dc = dcGenTOPP2(r_GC, param, fCone, vec, nPoints, accelLim)
+% More efficient way of generating gradient UNUSED
 
 syms ds dds th dth ddth dxs ddxs dys ddys
 state = [ds; dds; th; dth; ddth];

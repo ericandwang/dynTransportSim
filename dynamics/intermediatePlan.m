@@ -1,4 +1,4 @@
-function [th, dth, ddth, tTotal, xp, yp] = intermediatePlan(s0, x_des, dx_des, fCone, vec, param, type, knotVec, porder)
+function [th, dth, ddth, tTotal, xp, yp, x, vx, ax, y, vy, ay] = intermediatePlan(s0, x_des, dx_des, fCone, vec, param, type, knotVec, porder)
 % Generating a trajectory that takes an statically infeasible IC to a
 % statically feasible intermediate point (type 1) OR a statically feasible
 % intermediate point to a statically infeasible FC (type -1)
@@ -23,7 +23,7 @@ end
 
 % defining number of discrete points and linear acceleration limit and u (bang bang angular acceleration) CCC user input
 u = 20;
-numPoints = 100;
+numPoints = length(knotVec) - (porder-1)*2;
 linAccelLim = 80;
 
 % constants
@@ -186,19 +186,19 @@ if (sign(type) > 0) % going from IC to intermediate point
     zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
     title('Gravito-Inertial Wrench Constraints')
 
-    x = zeros(numPoints+1,1);
-    vx = zeros(numPoints+1,1);
+    x = zeros(numPoints,1);
+    vx = zeros(numPoints,1);
     x(1) = x0;
     vx(1) = dx0;
-    y = zeros(numPoints+1,1);
-    vy = zeros(numPoints+1,1);
+    y = zeros(numPoints,1);
+    vy = zeros(numPoints,1);
     y(1) = y0;
     vy(1) = dy0;
     for i = 1:length(x)-1
-        x(i+1) = x(i) + vx(i)*dt + 1/2*ax(i)*dt^2;
-        vx(i+1) = vx(i) + ax(i)*dt;
-        y(i+1) = y(i) + vy(i)*dt + 1/2*ay(i)*dt^2;
-        vy(i+1) = vy(i) + ay(i)*dt;
+        x(i+1) = x(i) + vx(i)*dt + 1/6*(2*ax(i)+ax(i+1))/2*dt^2;
+        vx(i+1) = vx(i) + (ax(i)+ax(i+1))/2*dt;
+        y(i+1) = y(i) + vy(i)*dt + 1/6*(2*ay(i)+ay(i+1))*dt^2;
+        vy(i+1) = vy(i) + (ay(i)+ay(i+1))*dt;
     end
 
     % Plotting path debug
@@ -207,8 +207,14 @@ if (sign(type) > 0) % going from IC to intermediate point
 
     % Obtaining path
     s = linspace(0,1,length(x));
-    xp = spap2(knotVec, porder, s, x);
-    yp = spap2(knotVec, porder, s, y);
+    %xp = spap2(knotVec, porder, s, x);
+    %yp = spap2(knotVec, porder, s, y);
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, ax*tTotal^2);
+    ddyp = spap2(knotVec(3:end-2), porder-2, s, ay*tTotal^2);
+    dxp = fnint(ddxp,vx(1)*tTotal);
+    dyp = fnint(ddyp,vy(1)*tTotal);
+    xp = fnint(dxp,x(1));
+    yp = fnint(dyp,y(1));
 
     % Appending path to drive vx and vy to 0 (statically stable section)
     % CCC causes unbounded path to exit workspace due to limited
