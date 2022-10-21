@@ -51,7 +51,7 @@ for i = 1:length(ss)-1
     f2 = f2 + sqrt((xp_(i+1)-xp_(i))^2 + (yp_(i+1)-yp_(i))^2);
 end
 
-f = f1 + f2;
+f = f1*0 + f2;
 
 if nargout > 1
     gradf = dfFun(coefs);

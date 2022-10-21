@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 1;
+numIterations = 5;
 % Gen files
 genFiles = 0;
 % TOPP optimization
