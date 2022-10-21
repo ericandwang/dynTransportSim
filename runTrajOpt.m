@@ -13,13 +13,15 @@ useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
 % PATH optimization
-usePATHObjectiveGradient = true;
+usePATHObjectiveGradient = false;
 usePATHConstraintGradient = true;
 convexConeApproximation = true;
 % animation
 showAnimation = true;
 showSnapshots = true;
 movingWindow = false;
+showForces = true;
+xForceStretch = 3;
 
 %% Parameter Setup
 % hand and object dimensions
@@ -286,7 +288,7 @@ problem.solver = 'fmincon';
 problem.options = optimoptions('fmincon', ...
     'SpecifyObjectiveGradient',useTOPPObjectiveGradient, ...
     'SpecifyConstraintGradient',useTOPPConstraintGradient, ...
-    'MaxFunctionEvaluations', 5000, ...
+    'MaxFunctionEvaluations', 3000, ...
     'Display','iter');
 
 % invoke solver
@@ -309,59 +311,6 @@ figure, plot(P(:,1)), hold on, plot(P(:,2))
 legend({'$\dot{s}$','$\ddot{s}$'},'Interpreter','latex')
 title('$\dot{s}$ and $\ddot{s}$','Interpreter','latex')
 %figure, plot(fnval(xp,ss0), fnval(yp,ss0))
-
-% forward time scaling
-dT = 2.*(ss(2:end)-ss(1:end-1))./(dss(2:end)+dss(1:end-1));
-tss = cumsum([0; dT]);
-dt = min(dT)/10;
-dx = fnval(dxp,ss).*dss;
-dy = fnval(dyp,ss).*dss;
-dth = dths;
-t = 0:dt:tss(end);
-dx = interp1(tss,dx,t);
-dy = interp1(tss,dy,t);
-dth = interp1(tss,dth,t);
-x_G = cumsum(dx.*dt)' + s0(1);
-y_G = cumsum(dy.*dt)' + s0(3);
-th = cumsum(dth.*dt)' + s0(5);
-
-%% Animation
-if (showAnimation)
-    % initialize animation
-    CoR_radius = 0.005;
-    figure(1002); clf;
-    axis equal
-    
-    % show animation
-    for i = 1:1+29*showSnapshots:length(t)
-        if (showSnapshots)
-            hold on
-        else
-            hold off
-        end
-        hand = plot([-handW/2, handW/2, handW/2, -handW/2, -handW/2]+x_G(i), ...
-            [handH/2, handH/2, -handH/2, -handH/2, handH/2]+y_G(i), 'color', [0    0.4470    0.7410]);
-        hold on
-        object = plot([-objectW/2, objectW/2, objectW/2, -objectW/2, -objectW/2]+x_G(i)+r_GC(1), ...
-            [objectH/2, objectH/2, -objectH/2, -objectH/2, objectH/2]+y_G(i)+r_GC(2), 'color', [0.8500    0.3250    0.0980]);
-        CoR = rectangle('Position',[x_G(i)-CoR_radius/2 y_G(i)-CoR_radius/2 ...
-            CoR_radius CoR_radius],'Curvature',[1 1]);
-        rotate(hand,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
-        rotate(object,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
-        if (movingWindow)
-            axis equal
-            axis manual
-            plot(x_G(1:i),y_G(1:i))
-        else
-            plot(x_G(1:i),y_G(1:i),'--')
-            xlim([min([x_G;y_G])-1 max([x_G;y_G])+1])
-            ylim([min([x_G;y_G])-1 max([x_G;y_G])+1])
-        end
-        ylabel('y [m]')
-        xlabel('x [m]')
-        drawnow
-    end
-end
 
 %% Friction Cone
 
@@ -408,6 +357,80 @@ xlabel('$\ddot{x}_{c} [m/s^2]$','interpreter','latex')
 ylabel('$\ddot{y}_{c} [m/s^2]$','interpreter','latex')
 zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
 title('Gravito-Inertial Wrench Constraints')
+
+%% Animation
+% forward time scaling
+dT = 2.*(ss(2:end)-ss(1:end-1))./(dss(2:end)+dss(1:end-1));
+tss = cumsum([0; dT]);
+dt = min(dT)/10;
+dx = fnval(dxp,ss).*dss;
+dy = fnval(dyp,ss).*dss;
+dth = dths;
+t = 0:dt:tss(end);
+dx = interp1(tss,dx,t);
+dy = interp1(tss,dy,t);
+dth = interp1(tss,dth,t);
+x_G = cumsum(dx.*dt)' + s0(1);
+y_G = cumsum(dy.*dt)' + s0(3);
+th = cumsum(dth.*dt)' + s0(5);
+forces = individualForces(vec,p);
+forces = forces./max(forces).*0.9*objectH;
+fLx = forces(1,:); fLy = forces(2,:);
+fRx = forces(3,:); fRy = forces(4,:);
+fLx = interp1(tss,fLx,t); fLy = interp1(tss,fLy,t);
+fRx = interp1(tss,fRx,t); fRy = interp1(tss,fRy,t);
+fLx = fLx*xForceStretch; fRx = fRx*xForceStretch;
+
+if (showAnimation)
+    % initialize animation
+    CoR_radius = 0.005;
+    figure(1002); clf;
+    axis equal
+    
+    % show animation
+    for i = 1:1+29*showSnapshots:length(t)
+        if (showSnapshots)
+            hold on
+        else
+            hold off
+        end
+        hand = plot([-handW/2, handW/2, handW/2, -handW/2, -handW/2]+x_G(i), ...
+            [handH/2, handH/2, -handH/2, -handH/2, handH/2]+y_G(i), 'color', [0    0.4470    0.7410]);
+        hold on
+        object = plot([-objectW/2, objectW/2, objectW/2, -objectW/2, -objectW/2]+x_G(i)+r_GC(1), ...
+            [objectH/2, objectH/2, -objectH/2, -objectH/2, objectH/2]+y_G(i)+r_GC(2), 'color', 'black'); % [0.8500    0.3250    0.0980]
+        CoR = rectangle('Position',[x_G(i)-CoR_radius/2 y_G(i)-CoR_radius/2 ...
+            CoR_radius CoR_radius],'Curvature',[1 1]);
+        rotate(hand,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
+        rotate(object,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
+        if (showForces)
+            forceL = plot([-objectW/2 -objectW/2+fLx(i)]+x_G(i)+r_GC(1), ...
+                [-objectH/2 -objectH/2+fLy(i)]+y_G(i)+r_GC(2), 'color', 'red');
+            forceR = plot([objectW/2 objectW/2+fRx(i)]+x_G(i)+r_GC(1), ...
+                [-objectH/2 -objectH/2+fRy(i)]+y_G(i)+r_GC(2), 'color', 'red');
+            frictionConeL = plot([-objectW/2 -objectW/2-objectH/2*mu*xForceStretch -objectW/2 -objectW/2+objectH/2*mu*xForceStretch]+x_G(i)+r_GC(1), ...
+                [-objectH/2 0 -objectH/2 0]+y_G(i)+r_GC(2), '--', 'color', 'green');
+            frictionConeR = plot([objectW/2 objectW/2-objectH/2*mu*xForceStretch objectW/2 objectW/2+objectH/2*mu*xForceStretch]+x_G(i)+r_GC(1), ...
+                [-objectH/2 0 -objectH/2 0]+y_G(i)+r_GC(2), '--', 'color', 'green');
+            rotate(forceL,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
+            rotate(forceR,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
+            rotate(frictionConeL,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
+            rotate(frictionConeR,[0 0 1],rad2deg(th(i)),[x_G(i),y_G(i),0])
+        end
+        if (movingWindow)
+            axis equal
+            axis manual
+            plot(x_G(1:i),y_G(1:i))
+        else
+            plot(x_G(1:i),y_G(1:i),'--')
+            xlim([min([x_G;y_G])-1 max([x_G;y_G])+1])
+            ylim([min([x_G;y_G])-1 max([x_G;y_G])+1])
+        end
+        ylabel('y [m]')
+        xlabel('x [m]')
+        drawnow
+    end
+end
 
 %% PATH Preoptimization
 
