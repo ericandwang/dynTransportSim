@@ -128,8 +128,8 @@ xp_4.knots = xp_4.knots + 4;
 yp_4.knots = yp_4.knots + 4;
 
 % Stitching splines together
-xSplines = {xp_0, xp_1, xp_2};%, xp_3, xp_4};
-ySplines = {yp_0, yp_1, yp_2};%, yp_3, yp_4};
+xSplines = {xp_0, xp_1};%, xp_2, xp_3, xp_4};
+ySplines = {yp_0, yp_1};%, yp_2, yp_3, yp_4};
 numSplines = length(xSplines);
 sBounds = [sBounds(1) sBounds(2)*numSplines];
 collPoints = collPoints + 5; % CCC can increase to + 7 or + 5
