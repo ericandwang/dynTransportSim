@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 5;
+numIterations = 1;
 % Gen files
 genFiles = 0;
 % TOPP optimization
@@ -49,11 +49,11 @@ b = (8.9/25)^2; % most conservative (9/25)^2
 
 % initial conditions
 r_GC = [0.07; objectH/2+handH/2];
-s0 = [0; ...        % x_G -5
+s0 = [-5; ...        % x_G -5
       0; ...        % dx_G
-      0; ...        % y_G 5
+      5; ...        % y_G 5
       0; ...        % dy_G
-      -pi; ...        % th (0)
+      -3/4*pi; ...        % th (0)
       0; ...        % dth
       r_GC; ...     % r_GC
       0; ...        % dr_GC
@@ -63,11 +63,13 @@ s0 = [0; ...        % x_G -5
 
 % desired end position
 x_des = [5; ... % x
-         0; ... % y
-         0];   % th
-dx_des = [0; ... % dx
-          0; ... % dy
+         1; ... % y
+         -pi/4];   % th
+dx_des = [1; ... % dx
+          1; ... % dy
           0];    % dth
+s_des = [x_des(1); dx_des(1); x_des(2); dx_des(2); x_des(3); dx_des(3); ...
+         s0(7:end)];
 
 %% Generate Friction Cone (object frame)
 maxNormalForce = 10; % max normal force [N]
@@ -94,34 +96,36 @@ ddyp = fnder(yp,2);
 
 %% Dynamically Feasible Spline Preinitialization
 disp('Calculating dynamically feasible warm start...')
-% TOPP evaluation options
-[th_pre, dth_pre, ddth_pre, tTotal_pre, xp_pre, yp_pre, x, vx, ax, y, vy, ay] = intermediatePlan(s0, x_des, dx_des, fCone, vec, param, 1, knotVec, porder);
-xp = xp_pre;
-dxp = fnder(xp,1);
-ddxp = fnder(xp,2);
-yp = yp_pre;
-dyp = fnder(yp,1);
-ddyp = fnder(yp,2);
+% statically infeasible IC to statically feasible point
+[th_0, dth_0, ddth_0, tTotal_0, xp_0, yp_0] = intermediatePlan(s0, x_des, fCone, param, knotVec, porder, 1);
+dxp_0 = fnder(xp_0,1); ddxp_0 = fnder(xp_0,2);
+dyp_0 = fnder(yp_0,1); ddyp_0 = fnder(yp_0,2);
+% statically feasible point to statically infeasible FC
+[th_4, dth_4, ddth_4, tTotal_4, xp_4, yp_4] = intermediatePlan(s_des, [s0(1); s0(3); s0(5)], fCone, param, knotVec, porder, -1);
+dxp_4 = fnder(xp_4,1); ddxp_0 = fnder(xp_4,2);
+dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
 
 % CCC just testing dynamic phase
 % desired end position
-x_des = [fnval(xp,1); ... % x
-         fnval(yp,1); ... % y
-         th_pre(tTotal_pre)];   % th
-dx_des = [fnval(dxp,1)*1/tTotal_pre; ... % dx
-          fnval(dyp,1)*1/tTotal_pre; ... % dy
-          dth_pre(tTotal_pre)];    % dth
+%x_des = [fnval(xp,1); ... % x
+%         fnval(yp,1); ... % y
+%         th_pre(tTotal_pre)];   % th
+%dx_des = [fnval(dxp,1)*1/tTotal_pre; ... % dx
+%          fnval(dyp,1)*1/tTotal_pre; ... % dy
+%          dth_pre(tTotal_pre)];    % dth
 
-% Appending path with naive straight line approach
-vAngRatio = fnval(dyp,1)/fnval(dxp,1);
-xdisp = (fnval(xp,1) - fnval(xp,0))*1.5; % arbitrary distance
-x1end = fnval(xp,1) + xdisp;
-y1end = fnval(yp,1) + xdisp*vAngRatio;
+% Straight line path (1)
+vAngRatio = fnval(dyp_0,1)/fnval(dxp_0,1);
+xdisp = (fnval(xp_0,1) - fnval(xp_0,0))*1.5; % arbitrary distance
+x1end = fnval(xp_0,1) + xdisp;
+y1end = fnval(yp_0,1) + xdisp*vAngRatio;
 tempNumPoints = 100;
-x = fnval(xp,linspace(0,1,tempNumPoints));
-y = fnval(yp,linspace(0,1,tempNumPoints));
+x = fnval(xp_0,linspace(0,1,tempNumPoints));
+y = fnval(yp_0,linspace(0,1,tempNumPoints));
 x1 = linspace(x(end),x1end,tempNumPoints); x1 = x1(2:end);
 y1 = linspace(y(end),y1end,tempNumPoints); y1 = y1(2:end);
+
+% Straight line path (3)
 
 sBounds = [sBounds(1) sBounds(2)*2];
 collPoints = collPoints + 5; % CCC can increase to + 7
