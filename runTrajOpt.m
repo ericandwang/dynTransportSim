@@ -96,52 +96,61 @@ ddyp = fnder(yp,2);
 
 %% Dynamically Feasible Spline Preinitialization
 disp('Calculating dynamically feasible warm start...')
+numPoints = 100;
 % statically infeasible IC to statically feasible point
-[th_0, dth_0, ddth_0, tTotal_0, xp_0, yp_0] = intermediatePlan(s0, x_des, fCone, param, knotVec, porder, 1);
-dxp_0 = fnder(xp_0,1); ddxp_0 = fnder(xp_0,2);
-dyp_0 = fnder(yp_0,1); ddyp_0 = fnder(yp_0,2);
+[th_0, dth_0, ddth_0, tTotal_0, xp_0, yp_0] = intermediatePlanDynamic(s0, x_des, fCone, param, knotVec, porder, 1);
 % statically feasible point to statically infeasible FC
-[th_4, dth_4, ddth_4, tTotal_4, xp_4, yp_4] = intermediatePlan(s_des, [s0(1); s0(3); s0(5)], fCone, param, knotVec, porder, -1);
+[th_4, dth_4, ddth_4, tTotal_4, xp_4, yp_4] = intermediatePlanDynamic(s_des, [s0(1); s0(3); s0(5)], fCone, param, knotVec, porder, -1);
 dxp_4 = fnder(xp_4,1); ddxp_0 = fnder(xp_4,2);
 dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
 
-% CCC just testing dynamic phase
-% desired end position
-%x_des = [fnval(xp,1); ... % x
-%         fnval(yp,1); ... % y
-%         th_pre(tTotal_pre)];   % th
-%dx_des = [fnval(dxp,1)*1/tTotal_pre; ... % dx
-%          fnval(dyp,1)*1/tTotal_pre; ... % dy
-%          dth_pre(tTotal_pre)];    % dth
+% Static path (1)
+[xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1);
 
-% Straight line path (1)
-vAngRatio = fnval(dyp_0,1)/fnval(dxp_0,1);
-xdisp = (fnval(xp_0,1) - fnval(xp_0,0))*1.5; % arbitrary distance
-x1end = fnval(xp_0,1) + xdisp;
-y1end = fnval(yp_0,1) + xdisp*vAngRatio;
-tempNumPoints = 100;
-x = fnval(xp_0,linspace(0,1,tempNumPoints));
-y = fnval(yp_0,linspace(0,1,tempNumPoints));
-x1 = linspace(x(end),x1end,tempNumPoints); x1 = x1(2:end);
-y1 = linspace(y(end),y1end,tempNumPoints); y1 = y1(2:end);
+% Static path (3)
+[xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1);
 
-% Straight line path (3)
+% Static path (2)
+x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
+y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
+s2 = linspace(0,1,length(x2));
+xp_2 = spap2(knotVec, porder, s2, x2);
+yp_2 = spap2(knotVec, porder, s2, y2);
 
-sBounds = [sBounds(1) sBounds(2)*2];
-collPoints = collPoints + 5; % CCC can increase to + 7
+% Offsetting path parameter s
+xp_1.knots = xp_1.knots + 1;
+yp_1.knots = yp_1.knots + 1;
+xp_2.knots = xp_2.knots + 2;
+yp_2.knots = yp_2.knots + 2;
+xp_3.knots = xp_3.knots + 3;
+yp_3.knots = yp_3.knots + 3;
+xp_4.knots = xp_4.knots + 4;
+yp_4.knots = yp_4.knots + 4;
+
+% Stitching splines together
+xSplines = {xp_0, xp_1, xp_2};%, xp_3, xp_4};
+ySplines = {yp_0, yp_1, yp_2};%, yp_3, yp_4};
+numSplines = length(xSplines);
+sBounds = [sBounds(1) sBounds(2)*numSplines];
+collPoints = collPoints + 5; % CCC can increase to + 7 or + 5
 knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
-s = [linspace(0,1,length(x)), linspace(1,2,length(x1))];
-xp1 = spap2(knotVec, porder, s, [x,x1]);
-yp1 = spap2(knotVec, porder, s, [y,y1]);
+numPoints = length(knotVec) - (porder-1)*2;
+s = linspace(sBounds(1),sBounds(2),numPoints);
+ddx = zeros(1,length(s));
+ddy = zeros(1,length(s));
+for i = 1:numSplines
+    ddx = ddx + fnval(fnder(xSplines{i},2),s);
+    ddy = ddy + fnval(fnder(ySplines{i},2),s);
+end
+s = linspace(sBounds(1),sBounds(2),length(ddx));
+ddxp = spap2(knotVec(3:end-2), porder-2, s, ddx);
+ddyp = spap2(knotVec(3:end-2), porder-2, s, ddy);
+dxp = fnint(ddxp,fnval(fnder(xSplines{1},1),0));
+dyp = fnint(ddyp,fnval(fnder(ySplines{1},1),0));
+xp = fnint(dxp,fnval(xSplines{1},0));
+yp = fnint(dyp,fnval(ySplines{1},0));
 
-% CCC now testing static stable phase
-xp = xp1;
-dxp = fnder(xp,1);
-ddxp = fnder(xp,2);
-yp = yp1;
-dyp = fnder(yp,1);
-ddyp = fnder(yp,2);
-
+% debugging intermediate path termination
 x_des = [fnval(xp,sBounds(2)); ... % x
          fnval(yp,sBounds(2)); ... % y
          0];   % th
@@ -193,14 +202,18 @@ if (iii == 1)
 
     % CCC replaced naive initialization with feasible spline
     % preinitialization results
-    dss0 = ones(evalPoints,1).*1/tTotal_pre;
+    dss0 = ones(evalPoints,1).*1/tTotal_0;
+    dss0(ss0 >= 4) = 1/tTotal_4;    
     ddss0 = zeros(evalPoints,1);
     for ii = 1:length(ddss0)-1
         ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
     end
-    th0 = th_pre(ss0*tTotal_pre);
-    dth0 = dth_pre(ss0*tTotal_pre);
-    ddth0 = ddth_pre(ss0*tTotal_pre);
+    th0 = th_0(ss0*tTotal_0);
+    th0(ss0 >= 4) = th_4((ss0(ss0>=4)-4)*tTotal_4);
+    dth0 = dth_0(ss0*tTotal_0);
+    dth0(ss0 >= 4) = dth_4((ss0(ss0>=4)-4)*tTotal_4);
+    ddth0 = ddth_0(ss0*tTotal_0);
+    ddth0(ss0 >= 4) = ddth_4((ss0(ss0>=4)-4)*tTotal_4);
     P0 = [dss0; ddss0; th0; dth0; ddth0];
 else
     P0 = psolve;
