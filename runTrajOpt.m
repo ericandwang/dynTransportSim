@@ -132,7 +132,7 @@ xSplines = {xp_0, xp_1};%, xp_2, xp_3, xp_4};
 ySplines = {yp_0, yp_1};%, yp_2, yp_3, yp_4};
 numSplines = length(xSplines);
 sBounds = [sBounds(1) sBounds(2)*numSplines];
-collPoints = collPoints + 5; % CCC can increase to + 7 or + 5
+collPoints = collPoints*numSplines; % CCC can increase to + 7 or + 5
 knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
 numPoints = length(knotVec) - (porder-1)*2;
 s = linspace(sBounds(1),sBounds(2),numPoints);
@@ -164,6 +164,21 @@ evalPoints = (collPoints-1)*3+1;
 ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
 % object frame y acceleration limit
 accelLim = 100;
+
+% pre-calculation for sparse gradient assembler
+dcFun1 = dcGenTOPP3(r_GC, param, fCone, vec, 1, accelLim);
+selectionMatrix_ = eye(evalPoints*5);
+selectionMatrixL = selectionMatrix_;
+for i = 1:5 % iterate over number of states
+    selectionMatrixL(1+evalPoints*(i-1):evalPoints*i,:) = ...
+        selectionMatrix_(i:5:end,:);
+end
+selectionMatrixR = selectionMatrix_;
+nCon = 5; % number of constraints
+selectionMatrixR(:,evalPoints*(nCon-1)+1:end) = selectionMatrix_(:,nCon:nCon:end);
+for i = 1:evalPoints
+    selectionMatrixR(:,1+(nCon-1)*(i-1):(nCon-1)*i) = selectionMatrix_(:,1+nCon*(i-1):nCon*(i-1)+nCon-1);
+end
 
 if (genFiles)
     disp('Calculating TOPP constraint gradient functions...')
@@ -232,7 +247,8 @@ if (useTOPPConstraintGradient)
     dyp_ = fnval(dyp,ss0);
     ddyp_ = fnval(ddyp,ss0);
     splines = [dxp_; ddxp_; dyp_; ddyp_];
-    dcFun = @(states) dcFunGen(states, splines);
+    %dcFun = @(states) dcFunGen(states, splines);
+    dcFun = @(states) dcGenTOPPAssemble(states, splines, dcFun1, selectionMatrixL, selectionMatrixR);
     % calculate equality constraint jacobian
     %dceqFun = dceqGenTOPP(ss0, evalPoints);
     dceqFun = @(states) dceqFunGen(states);

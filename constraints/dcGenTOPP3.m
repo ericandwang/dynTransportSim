@@ -1,4 +1,4 @@
-function [] = dcGenTOPP3(r_GC, param, fCone, vec, nPoints, accelLim)
+function fun = dcGenTOPP3(r_GC, param, fCone, vec, nPoints, accelLim)
 % gen function
 
 syms dss ddss ths dths ddths
@@ -49,7 +49,11 @@ c = [c; cappend];
 jac = jacobian(c,states)';
 
 % generating function for inequality gradient
-matlabFunction(jac,'Vars',{states,splines},'File','constraints/gen/dcFunGen.m');
+if (nargout == 0)
+    matlabFunction(jac,'Vars',{states,splines},'File','constraints/gen/dcFunGen.m');
+else
+    fun = matlabFunction(jac,'Vars',{states,splines});
+end
 
 
 end
