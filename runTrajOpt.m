@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 1;
+numIterations = 3;
 % Gen files
 genFiles = 0;
 % TOPP optimization
@@ -97,9 +97,9 @@ ddyp = fnder(yp,2);
 %% Dynamically Feasible Spline Preinitialization
 disp('Calculating dynamically feasible warm start...')
 numPoints = 100;
-% statically infeasible IC to statically feasible point
+% statically infeasible IC to statically feasible point (0)
 [th_0, dth_0, ddth_0, tTotal_0, xp_0, yp_0] = intermediatePlanDynamic(s0, x_des, fCone, param, knotVec, porder, 1);
-% statically feasible point to statically infeasible FC
+% statically feasible point to statically infeasible FC (4)
 [th_4, dth_4, ddth_4, tTotal_4, xp_4, yp_4] = intermediatePlanDynamic(s_des, [s0(1); s0(3); s0(5)], fCone, param, knotVec, porder, -1);
 dxp_4 = fnder(xp_4,1); ddxp_0 = fnder(xp_4,2);
 dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
@@ -472,14 +472,17 @@ xcoefs0 = xp.coefs';
 ycoefs0 = yp.coefs';
 coefs0 = [xcoefs0; ycoefs0];
 numCoefs = length(coefs0);
+[basis, dbasis, ddbasis, posEndpoints, velEndpoints] = splineBasisCoefs(knotVec, porder);
 
 if (usePATHConstraintGradient)
     disp('Calculating PATH constraint gradient functions...')
     % calculate inequality constraint jacobian
     dcFun = dcGenPATH(P, r_GC, param, fCone, vec, ss0, knotVec, numCoefs, accelLim);
     % calculate equality constraint jacobian
+    dceqFun = dceqGenPATH(numCoefs, velEndpoints, s0, dx_des);
 else
     dcFun = [];
+    dceqFun = [];
 end
 
 if (convexConeApproximation)
@@ -513,15 +516,16 @@ end
 %ub = ones(numCoefs,1).*10;
 
 % endpoint constraints and acceleration constraints
-[basis, dbasis, ddbasis] = splineBasisCoefs(knotVec, porder);
-polyMultiplier = basis{1}(1,end);
-% endpoints
 Aeq = zeros(4,numCoefs);
-Aeq(1,1) = polyMultiplier;
-Aeq(2,numCoefs/2) = polyMultiplier;
-Aeq(3,numCoefs/2+1) = polyMultiplier;
-Aeq(4,end) = polyMultiplier;
-beq = [s0(1); x_des(1); s0(3); x_des(2)];
+beq = zeros(4,1);
+% position endpoints
+Aeq(1,1:numCoefs/2) = posEndpoints(1,:);
+Aeq(2,1:numCoefs/2) = posEndpoints(2,:);
+Aeq(3,numCoefs/2+1:end) = posEndpoints(1,:);
+Aeq(4,numCoefs/2+1:end) = posEndpoints(2,:);
+beq(1) = s0(1); beq(2) = x_des(1); beq(3) = s0(3); beq(4) = x_des(2);
+
+
 % add in constraints for velocity endpoints IMPORTANT CCC
 % accelerations CCC not implemented
 %Aeq2 = [ddImpulses' zeros(size(ddImpulses')); ...
@@ -538,7 +542,7 @@ beq = [s0(1); x_des(1); s0(3); x_des(2)];
 
 
 % nonlinear constraint function
-nonlcon = @(coefs) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, tol, dcFun, accelLim);
+nonlcon = @(coefs) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, tol, accelLim, velEndpoints, s0, dx_des, dcFun, dceqFun);
 
 % optimization
 problem.x0 = coefs0;

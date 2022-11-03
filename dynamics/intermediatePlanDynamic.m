@@ -166,32 +166,32 @@ ax = asol.a(1:2:end);
 ay = asol.a(2:2:end);
 
 % Plotting gravito inertial wrench constraints
-figure(200)
-hold off
-patch([0; fCone(1,1); fCone(1,2)],[0;fCone(2,1);fCone(2,2)],[0;fCone(3,1);fCone(3,2)],[0.5,0,0.5],'FaceAlpha',0.1)
-hold on
-patch([0; fCone(1,2); fCone(1,3)],[0;fCone(2,2);fCone(2,3)],[0;fCone(3,2);fCone(3,3)],[0.5,0,0.5],'FaceAlpha',0.1)
-patch([0; fCone(1,3); fCone(1,4)],[0;fCone(2,3);fCone(2,4)],[0;fCone(3,3);fCone(3,4)],[0.5,0,0.5],'FaceAlpha',0.1)
-patch([0; fCone(1,4); fCone(1,1)],[0;fCone(2,4);fCone(2,1)],[0;fCone(3,4);fCone(3,1)],[0.5,0,0.5],'FaceAlpha',0.1)
-p = zeros(3,numPoints-1);
-for i = 1:numPoints-1
-    th1 = th(t(i));
-    dth1 = dth(t(i))*type;
-    ddth1 = ddth(t(i))*type;
-    ax_G = ax(i)*type;
-    ay_G = ay(i)*type;
-    p(:,i) = [cos(th1) sin(th1) -R_GC*sin(th_GC); ...
-              -sin(th1) cos(th1) R_GC*cos(th_GC); ...
-              0 0 1]*[ax_G; ay_G; ddth1] + ...
-              [g*sin(th1)-R_GC*dth1^2*cos(th_GC); ...
-              g*cos(th1)-R_GC*dth1^2*sin(th_GC); 0];
-end
-scatter3(p(1,1),p(2,1),p(3,1),'k');
-plot3(p(1,:),p(2,:),p(3,:),'b')
-xlabel('$\ddot{x}_{c} [m/s^2]$','interpreter','latex')
-ylabel('$\ddot{y}_{c} [m/s^2]$','interpreter','latex')
-zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
-title('Gravito-Inertial Wrench Constraints')
+% figure(200)
+% hold off
+% patch([0; fCone(1,1); fCone(1,2)],[0;fCone(2,1);fCone(2,2)],[0;fCone(3,1);fCone(3,2)],[0.5,0,0.5],'FaceAlpha',0.1)
+% hold on
+% patch([0; fCone(1,2); fCone(1,3)],[0;fCone(2,2);fCone(2,3)],[0;fCone(3,2);fCone(3,3)],[0.5,0,0.5],'FaceAlpha',0.1)
+% patch([0; fCone(1,3); fCone(1,4)],[0;fCone(2,3);fCone(2,4)],[0;fCone(3,3);fCone(3,4)],[0.5,0,0.5],'FaceAlpha',0.1)
+% patch([0; fCone(1,4); fCone(1,1)],[0;fCone(2,4);fCone(2,1)],[0;fCone(3,4);fCone(3,1)],[0.5,0,0.5],'FaceAlpha',0.1)
+% p = zeros(3,numPoints-1);
+% for i = 1:numPoints-1
+%     th1 = th(t(i));
+%     dth1 = dth(t(i))*type;
+%     ddth1 = ddth(t(i))*type;
+%     ax_G = ax(i)*type;
+%     ay_G = ay(i)*type;
+%     p(:,i) = [cos(th1) sin(th1) -R_GC*sin(th_GC); ...
+%               -sin(th1) cos(th1) R_GC*cos(th_GC); ...
+%               0 0 1]*[ax_G; ay_G; ddth1] + ...
+%               [g*sin(th1)-R_GC*dth1^2*cos(th_GC); ...
+%               g*cos(th1)-R_GC*dth1^2*sin(th_GC); 0];
+% end
+% scatter3(p(1,1),p(2,1),p(3,1),'k');
+% plot3(p(1,:),p(2,:),p(3,:),'b')
+% xlabel('$\ddot{x}_{c} [m/s^2]$','interpreter','latex')
+% ylabel('$\ddot{y}_{c} [m/s^2]$','interpreter','latex')
+% zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
+% title('Gravito-Inertial Wrench Constraints')
 
 x = zeros(numPoints,1);
 vx = zeros(numPoints,1);

@@ -1,9 +1,11 @@
-function [coefs, dcoefs, ddcoefs] = splineBasisCoefs(knots, order)
+function [coefs, dcoefs, ddcoefs, posEndpoints, velEndpoints] = splineBasisCoefs(knots, order)
 
 numBasis = length(knots) - order;
 cp = eye(numBasis);
 coefs = cell(numBasis,1);
-ddImpulses = zeros(numBasis,numBasis-2);
+%ddImpulses = zeros(numBasis,numBasis-2);
+posEndpoints = size(2,numBasis);
+velEndpoints = size(2,numBasis);
 
 for i = 1:numBasis
     bs = spmak(knots,cp(i,:));
@@ -15,6 +17,10 @@ for i = 1:numBasis
     coefs{i} = sp.coefs;
     dcoefs{i} = dsp.coefs;
     ddcoefs{i} = ddsp.coefs;
+    posEndpoints(1,i) = fnval(bs,knots(1));
+    posEndpoints(2,i) = fnval(bs,knots(end));
+    velEndpoints(1,i) = fnval(dbs,knots(1));
+    velEndpoints(2,i) = fnval(dbs,knots(end));
 end
 
 end
