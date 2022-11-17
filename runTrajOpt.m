@@ -111,11 +111,12 @@ dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
 [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1);
 
 % Static path (2)
-x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
-y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
-s2 = linspace(0,1,length(x2));
-xp_2 = spap2(knotVec, porder, s2, x2);
-yp_2 = spap2(knotVec, porder, s2, y2);
+%x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
+%y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
+%s2 = linspace(0,1,length(x2));
+%xp_2 = spap2(knotVec, porder, s2, x2);
+%yp_2 = spap2(knotVec, porder, s2, y2);
+[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder);
 
 % Offsetting path parameter s
 xp_1.knots = xp_1.knots + 1;
@@ -128,8 +129,8 @@ xp_4.knots = xp_4.knots + 4;
 yp_4.knots = yp_4.knots + 4;
 
 % Stitching splines together
-xSplines = {xp_0, xp_1};%, xp_2, xp_3, xp_4};
-ySplines = {yp_0, yp_1};%, yp_2, yp_3, yp_4};
+xSplines = {xp_0, xp_1, xp_2};%, xp_3, xp_4};
+ySplines = {yp_0, yp_1, yp_2};%, yp_3, yp_4};
 numSplines = length(xSplines);
 sBounds = [sBounds(1) sBounds(2)*numSplines];
 collPoints = collPoints*numSplines; % CCC can increase to + 7 or + 5
