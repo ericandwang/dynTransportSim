@@ -28,5 +28,19 @@ else
     yp = spap2(knotVec, porder, s, y);
 end
 
+% New integration method CCC TODO
+if (direction == 1)
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, [zeros(1,99) -1]);
+    dxp = fnint(ddxp,1);
+    dxp.coefs = dxp.coefs - dxp.coefs(end);
+    xp = fnint(dxp,0);
+    xp.coefs = xp.coefs*xdisp/fnval(xp,1);
+    yp = xp;
+    yp.coefs = yp.coefs*vAngRatio;
+    xp.coefs = xp.coefs + fnval(xpD,1);
+    yp.coefs = yp.coefs + fnval(ypD,1);
+else
+end
+
 end
 
