@@ -5,16 +5,18 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 3;
+numIterations = 1;
 % Gen files
 genFiles = 0;
+% Warm start?
+warmStart = 0;
 % TOPP optimization
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
 % PATH optimization
 usePATHObjectiveGradient = false;
-usePATHConstraintGradient = true;
+usePATHConstraintGradient = false;
 convexConeApproximation = true;
 % animation
 showAnimation = true;
@@ -60,6 +62,17 @@ s0 = [-5; ...        % x_G -5
       0; ...
       0; ...        % th_C
       0];           % dth_C
+s0 = [-5; ...        % x_G -5
+      0; ...        % dx_G
+      0; ...        % y_G 5
+      0; ...        % dy_G
+      0; ...        % th (0)
+      0; ...        % dth
+      r_GC; ...     % r_GC
+      0; ...        % dr_GC
+      0; ...
+      0; ...        % th_C
+      0];           % dth_C
 
 % desired end position
 x_des = [5; ... % x
@@ -67,6 +80,12 @@ x_des = [5; ... % x
          -pi/4];   % th
 dx_des = [1; ... % dx
           1; ... % dy
+          0];    % dth
+x_des = [0; ... % x
+         0; ... % y
+         0];   % th
+dx_des = [0; ... % dx
+          0; ... % dy
           0];    % dth
 s_des = [x_des(1); dx_des(1); x_des(2); dx_des(2); x_des(3); dx_des(3); ...
          s0(7:end)];
@@ -90,74 +109,83 @@ xp = spapi(knotVec, interpPoints, interp1(cc,xx,interpPoints));
 dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
 yp = spapi(knotVec, interpPoints, interp1(cc,yy,interpPoints));
-yp = spmak(yp.knots,[0 ones(1, length(yp.coefs)-2) 0]); % CCC remove immediately
+%yp = spmak(yp.knots,[0 ones(1, length(yp.coefs)-2) 0]); % CCC remove immediately
+%dyp = fnder(yp,1);
+%ddyp = fnder(yp,2);
+[xp, yp] = intermediatePlanBridge(s0(1), s0(3), x_des(1), x_des(2), knotVec, porder); % CCC remove immediately
+dxp = fnder(xp,1);
+ddxp = fnder(xp,2);
+yp.coefs(porder:end-porder+1) = 1;
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
 
+
 %% Dynamically Feasible Spline Preinitialization
-disp('Calculating dynamically feasible warm start...')
-numPoints = 100;
-% statically infeasible IC to statically feasible point (0)
-[th_0, dth_0, ddth_0, tTotal_0, xp_0, yp_0] = intermediatePlanDynamic(s0, x_des, fCone, param, knotVec, porder, 1);
-% statically feasible point to statically infeasible FC (4)
-[th_4, dth_4, ddth_4, tTotal_4, xp_4, yp_4] = intermediatePlanDynamic(s_des, [s0(1); s0(3); s0(5)], fCone, param, knotVec, porder, -1);
-dxp_4 = fnder(xp_4,1); ddxp_0 = fnder(xp_4,2);
-dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
-
-% Static path (1)
-[xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1);
-
-% Static path (3)
-[xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1);
-
-% Static path (2)
-%x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
-%y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
-%s2 = linspace(0,1,length(x2));
-%xp_2 = spap2(knotVec, porder, s2, x2);
-%yp_2 = spap2(knotVec, porder, s2, y2);
-[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder);
-
-% Offsetting path parameter s
-xp_1.knots = xp_1.knots + 1;
-yp_1.knots = yp_1.knots + 1;
-xp_2.knots = xp_2.knots + 2;
-yp_2.knots = yp_2.knots + 2;
-xp_3.knots = xp_3.knots + 3;
-yp_3.knots = yp_3.knots + 3;
-xp_4.knots = xp_4.knots + 4;
-yp_4.knots = yp_4.knots + 4;
-
-% Stitching splines together
-xSplines = {xp_0, xp_1, xp_2};%, xp_3, xp_4};
-ySplines = {yp_0, yp_1, yp_2};%, yp_3, yp_4};
-numSplines = length(xSplines);
-sBounds = [sBounds(1) sBounds(2)*numSplines];
-collPoints = collPoints*numSplines; % CCC can increase to + 7 or + 5
-knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
-numPoints = length(knotVec) - (porder-1)*2;
-s = linspace(sBounds(1),sBounds(2),numPoints);
-ddx = zeros(1,length(s));
-ddy = zeros(1,length(s));
-for i = 1:numSplines
-    ddx = ddx + fnval(fnder(xSplines{i},2),s);
-    ddy = ddy + fnval(fnder(ySplines{i},2),s);
+if (warmStart)
+    disp('Calculating dynamically feasible warm start...')
+    numPoints = 100;
+    % statically infeasible IC to statically feasible point (0)
+    [th_0, dth_0, ddth_0, tTotal_0, xp_0, yp_0] = intermediatePlanDynamic(s0, x_des, fCone, param, knotVec, porder, 1);
+    % statically feasible point to statically infeasible FC (4)
+    [th_4, dth_4, ddth_4, tTotal_4, xp_4, yp_4] = intermediatePlanDynamic(s_des, [s0(1); s0(3); s0(5)], fCone, param, knotVec, porder, -1);
+    dxp_4 = fnder(xp_4,1); ddxp_0 = fnder(xp_4,2);
+    dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
+    
+    % Static path (1)
+    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1);
+    
+    % Static path (3)
+    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1);
+    
+    % Static path (2)
+    %x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
+    %y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
+    %s2 = linspace(0,1,length(x2));
+    %xp_2 = spap2(knotVec, porder, s2, x2);
+    %yp_2 = spap2(knotVec, porder, s2, y2);
+    [xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder);
+    
+    % Offsetting path parameter s
+    xp_1.knots = xp_1.knots + 1;
+    yp_1.knots = yp_1.knots + 1;
+    xp_2.knots = xp_2.knots + 2;
+    yp_2.knots = yp_2.knots + 2;
+    xp_3.knots = xp_3.knots + 3;
+    yp_3.knots = yp_3.knots + 3;
+    xp_4.knots = xp_4.knots + 4;
+    yp_4.knots = yp_4.knots + 4;
+    
+    % Stitching splines together
+    xSplines = {xp_0, xp_1, xp_2};%, xp_3, xp_4};
+    ySplines = {yp_0, yp_1, yp_2};%, yp_3, yp_4};
+    numSplines = length(xSplines);
+    sBounds = [sBounds(1) sBounds(2)*numSplines];
+    collPoints = collPoints*numSplines; % CCC can increase to + 7 or + 5
+    knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
+    numPoints = length(knotVec) - (porder-1)*2;
+    s = linspace(sBounds(1),sBounds(2),numPoints);
+    ddx = zeros(1,length(s));
+    ddy = zeros(1,length(s));
+    for i = 1:numSplines
+        ddx = ddx + fnval(fnder(xSplines{i},2),s);
+        ddy = ddy + fnval(fnder(ySplines{i},2),s);
+    end
+    s = linspace(sBounds(1),sBounds(2),length(ddx));
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, ddx);
+    ddyp = spap2(knotVec(3:end-2), porder-2, s, ddy);
+    dxp = fnint(ddxp,fnval(fnder(xSplines{1},1),0));
+    dyp = fnint(ddyp,fnval(fnder(ySplines{1},1),0));
+    xp = fnint(dxp,fnval(xSplines{1},0));
+    yp = fnint(dyp,fnval(ySplines{1},0));
+    
+    % debugging intermediate path termination
+    x_des = [fnval(xp,sBounds(2)); ... % x
+             fnval(yp,sBounds(2)); ... % y
+             0];   % th
+    dx_des = [0; ... % dx
+              0; ... % dy
+              0];    % dth
 end
-s = linspace(sBounds(1),sBounds(2),length(ddx));
-ddxp = spap2(knotVec(3:end-2), porder-2, s, ddx);
-ddyp = spap2(knotVec(3:end-2), porder-2, s, ddy);
-dxp = fnint(ddxp,fnval(fnder(xSplines{1},1),0));
-dyp = fnint(ddyp,fnval(fnder(ySplines{1},1),0));
-xp = fnint(dxp,fnval(xSplines{1},0));
-yp = fnint(dyp,fnval(ySplines{1},0));
-
-% debugging intermediate path termination
-x_des = [fnval(xp,sBounds(2)); ... % x
-         fnval(yp,sBounds(2)); ... % y
-         0];   % th
-dx_des = [0; ... % dx
-          0; ... % dy
-          0];    % dth
 
 %% TOPP/PATH Generating Analytical Gradient Functions
 % number of constraint evaluation points
@@ -183,7 +211,7 @@ end
 
 if (genFiles)
     disp('Calculating TOPP constraint gradient functions...')
-    dcGenTOPP3(r_GC, param, fCone, vec, evalPoints, accelLim);
+    %dcGenTOPP3(r_GC, param, fCone, vec, evalPoints, accelLim);
     dceqGenTOPP2(ss0, evalPoints);
 
     disp('Calculating PATH constraint gradient functions...')
@@ -202,35 +230,37 @@ times = zeros(numIterations,1);
 for iii = 1:numIterations
 %% TOPP Preoptimization
 % equally spaced evaluation points and initial conditions
-initialVel = 1;%1e-2;
+initialVel = 1e-2; %1;
 
 if (iii == 1)
-%     ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
-%     dss0 = ones(evalPoints,1).*initialVel;
-%     ddss0 = zeros(evalPoints,1);
-%     for ii = 1:length(ddss0)-1
-%         ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
-%     end
-%     th0 = ones(evalPoints,1).*s0(5);
-%     dth0 = zeros(evalPoints,1);
-%     ddth0 = zeros(evalPoints,1);
-%     P0 = [dss0; ddss0; th0; dth0; ddth0];
-
-    % CCC replaced naive initialization with feasible spline
-    % preinitialization results
-    dss0 = ones(evalPoints,1).*1/tTotal_0;
-    dss0(ss0 >= 4) = 1/tTotal_4;    
-    ddss0 = zeros(evalPoints,1);
-    for ii = 1:length(ddss0)-1
-        ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
+    if (warmStart)
+        % CCC replaced naive initialization with feasible spline
+        % preinitialization results
+        dss0 = ones(evalPoints,1).*1/tTotal_0;
+        dss0(ss0 >= 4) = 1/tTotal_4;    
+        ddss0 = zeros(evalPoints,1);
+        for ii = 1:length(ddss0)-1
+            ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
+        end
+        th0 = th_0(ss0*tTotal_0);
+        th0(ss0 >= 4) = th_4((ss0(ss0>=4)-4)*tTotal_4);
+        dth0 = dth_0(ss0*tTotal_0);
+        dth0(ss0 >= 4) = dth_4((ss0(ss0>=4)-4)*tTotal_4);
+        ddth0 = ddth_0(ss0*tTotal_0);
+        ddth0(ss0 >= 4) = ddth_4((ss0(ss0>=4)-4)*tTotal_4);
+        P0 = [dss0; ddss0; th0; dth0; ddth0];
+    else
+        ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
+        dss0 = ones(evalPoints,1).*initialVel;
+        ddss0 = zeros(evalPoints,1);
+        for ii = 1:length(ddss0)-1
+            ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
+        end
+        th0 = ones(evalPoints,1).*s0(5);
+        dth0 = zeros(evalPoints,1);
+        ddth0 = zeros(evalPoints,1);
+        P0 = [dss0; ddss0; th0; dth0; ddth0];
     end
-    th0 = th_0(ss0*tTotal_0);
-    th0(ss0 >= 4) = th_4((ss0(ss0>=4)-4)*tTotal_4);
-    dth0 = dth_0(ss0*tTotal_0);
-    dth0(ss0 >= 4) = dth_4((ss0(ss0>=4)-4)*tTotal_4);
-    ddth0 = ddth_0(ss0*tTotal_0);
-    ddth0(ss0 >= 4) = ddth_4((ss0(ss0>=4)-4)*tTotal_4);
-    P0 = [dss0; ddss0; th0; dth0; ddth0];
 else
     P0 = psolve;
     dss0 = psolve(1:evalPoints);
@@ -305,7 +335,11 @@ ub = [ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
 if (useLinearization) % CCC not aligning with original constraint function now (decomissioned)
     nonlcon = @(P) nonlinconTOPP_lin(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun, th0);
 else
-    nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+    if (iii == numIterations)
+        nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+    else
+        nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*5, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+    end
 end
 
 % optimization
@@ -338,12 +372,14 @@ ths = P(:,3);
 dths = P(:,4);
 ddths = P(:,5);
 
-figure, plot(P(:,3))
-title ('Orientation')
-ylabel('angle [rad]')
-figure, plot(P(:,1)), hold on, plot(P(:,2))
-legend({'$\dot{s}$','$\ddot{s}$'},'Interpreter','latex')
-title('$\dot{s}$ and $\ddot{s}$','Interpreter','latex')
+if (iii == numIterations)
+    figure, plot(P(:,3))
+    title ('Orientation')
+    ylabel('angle [rad]')
+    figure, plot(P(:,1)), hold on, plot(P(:,2))
+    legend({'$\dot{s}$','$\ddot{s}$'},'Interpreter','latex')
+    title('$\dot{s}$ and $\ddot{s}$','Interpreter','latex')
+end
 %figure, plot(fnval(xp,ss0), fnval(yp,ss0))
 
 %% Friction Cone
