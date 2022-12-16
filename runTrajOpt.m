@@ -5,11 +5,11 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 1;
+numIterations = 15;
 % Gen files
 genFiles = 0;
 % Warm start?
-warmStart = 0;
+warmStart = 1;
 % TOPP optimization
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
@@ -39,7 +39,7 @@ I_C = 0.05; % kg*m^2
 r_p1C = [objectW/2; objectH/2]; % m
 r_p2C = [-objectW/2; objectH/2]; % m
 g = 9.81;
-mu = 0.1/2;%0.1; %0.3 %0.5
+mu = 0.1/2*5;%0.1; %0.3 %0.5
 param = [m_G; I_G; m_C; I_C; r_p1C; r_p2C; g; mu; handW; handH; objectW; objectH];
 % controller actuation limits (bidirectional)
 u_max = [30; 30; 20];
@@ -62,17 +62,17 @@ s0 = [-5; ...        % x_G -5
       0; ...
       0; ...        % th_C
       0];           % dth_C
-s0 = [-5; ...        % x_G -5
-      0; ...        % dx_G
-      0; ...        % y_G 5
-      0; ...        % dy_G
-      0; ...        % th (0)
-      0; ...        % dth
-      r_GC; ...     % r_GC
-      0; ...        % dr_GC
-      0; ...
-      0; ...        % th_C
-      0];           % dth_C
+% s0 = [-5; ...        % x_G -5
+%       0; ...        % dx_G
+%       0; ...        % y_G 5
+%       0; ...        % dy_G
+%       0; ...        % th (0)
+%       0; ...        % dth
+%       r_GC; ...     % r_GC
+%       0; ...        % dr_GC
+%       0; ...
+%       0; ...        % th_C
+%       0];           % dth_C
 
 % desired end position
 x_des = [5; ... % x
@@ -81,12 +81,12 @@ x_des = [5; ... % x
 dx_des = [1; ... % dx
           1; ... % dy
           0];    % dth
-x_des = [0; ... % x
-         0; ... % y
-         0];   % th
-dx_des = [0; ... % dx
-          0; ... % dy
-          0];    % dth
+% x_des = [0; ... % x
+%          0; ... % y
+%          0];   % th
+% dx_des = [0; ... % dx
+%           0; ... % dy
+%           0];    % dth
 s_des = [x_des(1); dx_des(1); x_des(2); dx_des(2); x_des(3); dx_des(3); ...
          s0(7:end)];
 
@@ -338,7 +338,7 @@ else
     if (iii == numIterations)
         nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
     else
-        nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*5, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+        nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*(10-(iii-1)/2), xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
     end
 end
 
@@ -356,7 +356,7 @@ problem.solver = 'fmincon';
 problem.options = optimoptions('fmincon', ...
     'SpecifyObjectiveGradient',useTOPPObjectiveGradient, ...
     'SpecifyConstraintGradient',useTOPPConstraintGradient, ...
-    'MaxFunctionEvaluations', 3000, ...
+    'MaxFunctionEvaluations', 3000/30, ...
     'Display','iter');
 
 % invoke solver
