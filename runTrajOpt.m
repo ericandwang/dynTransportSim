@@ -6,6 +6,8 @@ addpath(genpath(folder))
 %% Options
 % iteration loops
 numIterations = 15;
+% convergence rate for transit time
+alpha = 0.35; % 0.35 for example good
 % Gen files
 genFiles = 0;
 % Warm start?
@@ -20,7 +22,7 @@ usePATHConstraintGradient = false;
 convexConeApproximation = true;
 % animation
 showAnimation = true;
-showSnapshots = true;
+showSnapshots = 6;
 movingWindow = false;
 showForces = true;
 xForceStretch = 3;
@@ -292,6 +294,11 @@ end
 
 % objective function
 fun = @(P) objTOPP(P,evalPoints);
+if (iii == 1)
+    tt_prev = 1000; % CCC remove this magic number
+else
+    tt_prev = fun(P0);
+end
 
 % linear inequality constraints
 % monotonic path parameter (Note: removed but can reuse for variable delta
@@ -339,6 +346,7 @@ else
         nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
     else
         nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*(10-(iii-1)/2), xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+        %nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
     end
 end
 
@@ -361,7 +369,85 @@ problem.options = optimoptions('fmincon', ...
 
 % invoke solver
 psolve = fmincon(problem);
-times(iii) = sum(1./(psolve(2:evalPoints-1)))*ss0(2)-ss0(1);
+tt_max = fun(psolve);
+
+%% Max lambda TOPP
+% finding transit time constraint based on convergence rate
+tt_constrain = alpha*tt_max + (1-alpha)*tt_prev;
+
+% augmenting state matrix with lambda
+P0 = [psolve; 0.01];
+
+% objective function
+fun = @(P) objTOPPLambda(P);
+
+% linear inequality constraints
+% monotonic path parameter (Note: removed but can reuse for variable delta
+% path lengths)
+Aineq1 = diag(ones(evalPoints,1),0);
+Aineq2 = diag(-1.*ones(evalPoints,1),1);
+Aineq = Aineq1(1:evalPoints-1,1:evalPoints) + ...
+    Aineq2(1:evalPoints-1,1:evalPoints);
+Aineq = [Aineq zeros(size(Aineq,1),evalPoints*5+1)]; % making sure to include lambda
+bineq = zeros(evalPoints-1,1);
+
+% linear equality constraints
+Aeq = zeros(8,length(P0));
+Aeq(1,1) = fnval(dxp,sBounds(1)); % velocity endpoints
+Aeq(2,evalPoints) = fnval(dxp,sBounds(2));
+Aeq(3,1) = fnval(dyp,sBounds(1));
+Aeq(4,evalPoints) = fnval(dyp,sBounds(2));
+Aeq(5,2*evalPoints+1) = 1; % angle endpoints
+Aeq(6,3*evalPoints) = 1;
+Aeq(7,3*evalPoints+1) = 1; % angular velocity endpoints
+Aeq(8,4*evalPoints) = 1;
+beq = [s0(2); dx_des(1); ...
+       s0(4); dx_des(2); ...
+       s0(5); x_des(3); ...
+       s0(6); dx_des(3)];
+
+% CCC removing terminal velocity constraints
+%selectedRows = [1 3 5 6 7];
+%Aeq = Aeq(selectedRows,:);
+%beq = beq(selectedRows);
+
+% lower and upper bounds
+lb = [zeros(evalPoints,1); ones(evalPoints,1).*-Inf; ...
+      ones(evalPoints,1).*-Inf; ones(evalPoints,1).*-Inf; ...
+      ones(evalPoints,1).*-Inf; 0];
+ub = [ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
+      ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
+      ones(evalPoints,1).*Inf; Inf];
+
+% nonlinear constraint function
+nonlcon = @(P) nonlinconTOPPLambda(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim, tt_constrain);
+
+% optimization
+problem.x0 = P0;
+problem.objective = fun;
+problem.Aineq = [];
+problem.bineq = [];
+problem.Aeq = Aeq;
+problem.beq = beq;
+problem.lb = lb;
+problem.ub = ub;
+problem.nonlcon = nonlcon;
+problem.solver = 'fmincon';
+problem.options = optimoptions('fmincon', ...
+    'SpecifyObjectiveGradient',useTOPPObjectiveGradient, ...
+    'SpecifyConstraintGradient',useTOPPConstraintGradient, ...
+    'MaxFunctionEvaluations', 3000/30, ...
+    'Display','iter');
+
+% invoke solver
+psolve = fmincon(problem);
+% removing lambda from state vector
+psolve = psolve(1:end-1);
+
+
+%% Save Transit Time
+%times(iii) = sum(1./(psolve(2:evalPoints-1)))*ss0(2)-ss0(1);
+times(iii) = sum(2./(psolve(1:evalPoints-1,1)+psolve(2:evalPoints,1)))*ss0(2)-ss0(1);
 
 %% TOPP Results
 P = reshape(psolve,numel(psolve)/5,5);
@@ -680,3 +766,9 @@ plot(fnval(xp,splot), fnval(yp,splot))
 xlabel('x [m]')
 ylabel('y [m]')
 title('Path Iteration')
+
+% Transit time plot
+figure, plot(times)
+xlim([1 length(times)])
+ylabel('transit time [sec]')
+xlabel('iteration #')
