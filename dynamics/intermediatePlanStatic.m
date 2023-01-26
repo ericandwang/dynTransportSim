@@ -40,6 +40,15 @@ if (direction == 1)
     xp.coefs = xp.coefs + fnval(xpD,1);
     yp.coefs = yp.coefs + fnval(ypD,1);
 else
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, [1 zeros(1,99)]);
+    dxp = fnint(ddxp,1);
+    dxp.coefs = dxp.coefs - dxp.coefs(1);
+    xp = fnint(dxp,0);
+    xp.coefs = xp.coefs*xdisp/fnval(xp,1);
+    yp = xp;
+    yp.coefs = yp.coefs*vAngRatio;
+    xp.coefs = xp.coefs - xp.coefs(end) + fnval(xpD,1);
+    yp.coefs = yp.coefs - yp.coefs(end) + fnval(ypD,1);
 end
 
 end
