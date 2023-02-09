@@ -8,6 +8,7 @@ addpath(genpath(folder))
 numIterations = 15;
 % convergence rate for transit time
 alpha = 0.2; % 0.35 for example good
+beta = 0; % thought is to constrain how much replanning can push points to the edge of the gravito-inertial wrench boundary
 % Gen files
 genFiles = 0;
 % Warm start?
@@ -180,7 +181,7 @@ if (warmStart)
     xp = fnint(dxp,fnval(xSplines{1},0));
     yp = fnint(dyp,fnval(ySplines{1},0));
     
-    % debugging intermediate path termination
+    % debugging intermediate path termination CCC
     x_des = [fnval(xp,sBounds(2)); ... % x
              fnval(yp,sBounds(2)); ... % y
              0];   % th
@@ -294,9 +295,7 @@ end
 
 % objective function
 fun = @(P) objTOPP(P,evalPoints);
-if (iii == 1)
-    tt_prev = 1000; % CCC remove this magic number
-else
+if (iii > 1)
     tt_prev = fun(P0);
 end
 
@@ -345,8 +344,12 @@ else
     if (iii == numIterations)
         nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
     else
-        nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*(10-(iii-1)/2), xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
-        %nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+        %nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*(10-(iii-1)/2), xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+        if (iii >= 100) % 5 works CCC
+            nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*5, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+        else
+            nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+        end
     end
 end
 
@@ -370,10 +373,15 @@ problem.options = optimoptions('fmincon', ...
 % invoke solver
 psolve = fmincon(problem);
 tt_max = fun(psolve);
+tts(iii) = tt_max;
 
 %% Max lambda TOPP
 % finding transit time constraint based on convergence rate
-tt_constrain = alpha*tt_max + (1-alpha)*tt_prev;
+if (iii == 1)
+    tt_constrain = alpha*tt_max + (1-alpha)*tt_max*2;
+else
+    tt_constrain = alpha*tt_max + (1-alpha)*tt_prev;
+end
 
 % augmenting state matrix with lambda
 P0 = [psolve; 0.01];
@@ -442,6 +450,8 @@ problem.options = optimoptions('fmincon', ...
 % invoke solver
 psolve = fmincon(problem);
 % removing lambda from state vector
+lambda = psolve(end);
+lambdas(iii) = lambda;
 psolve = psolve(1:end-1);
 
 
@@ -665,7 +675,7 @@ beq(1) = s0(1); beq(2) = x_des(1); beq(3) = s0(3); beq(4) = x_des(2);
 
 
 % nonlinear constraint function
-nonlcon = @(coefs) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, tol, accelLim, velEndpoints, s0, dx_des, dcFun, dceqFun);
+nonlcon = @(coefs) nonlinconPATH(P, r_GC, param, fCone, vec, ss0, knotVec, coefs, tol + beta*lambda, accelLim, velEndpoints, s0, dx_des, dcFun, dceqFun);
 
 % optimization
 problem.x0 = coefs0;
