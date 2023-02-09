@@ -7,7 +7,7 @@ addpath(genpath(folder))
 % iteration loops
 numIterations = 15;
 % convergence rate for transit time
-alpha = 0.35; % 0.35 for example good
+alpha = 0.2; % 0.35 for example good
 % Gen files
 genFiles = 0;
 % Warm start?
