@@ -98,6 +98,7 @@ end
 boundarySlopes = [(boundaryPoints(2,2)-boundaryPoints(2,1))/(boundaryPoints(1,2)-boundaryPoints(1,1)); ...
     (boundaryPoints(2,4)-boundaryPoints(2,3))/(boundaryPoints(1,4)-boundaryPoints(1,3));
     fCone(2,2)/fCone(1,2)];
+zeroSlope = abs(fCone(2,1)/fCone(1,1));
 
 % accelerations to gravito inertial point transformations
 R_ = @(th) [cos(th) sin(th); -sin(th) cos(th)];
@@ -124,12 +125,16 @@ else
               boundaryPoints(2,4)-boundarySlopes(3)*boundaryPoints(1,4); ...
               boundaryPoints(2,1)-boundarySlopes(2)*boundaryPoints(1,1)];
 end
+Aline3 = [zeroSlope -1; -zeroSlope -1];
+bline3 = [0; 0];
 
 % combining line constraints with transformations
 A1 = @(th) Aline1*R_(th);
 b1 = @(th,dth,ddth) bline1 - Aline1*Rb_(th,dth,ddth);
 A2 = @(th) Aline2*R_(th);
 b2 = @(th,dth,ddth) bline2 - Aline2*Rb_(th,dth,ddth);
+A3 = @(th) Aline3*R_(th);
+b3 = @(th,dth,ddth) bline3 - Aline3*Rb_(th,dth,ddth);
 
 % creating diagonal matrix and concatenating vector for constraints
 Acell = cell(numPoints,1);
@@ -138,9 +143,12 @@ for i = 1:numPoints
     if (t(i) < t0)
         Acell{i} = A1(th(t(i)));
         b = [b; b1(th(t(i)),dth(t(i)),ddth(t(i)))];
-    else
+    elseif (t(i) < t1)
         Acell{i} = A2(th(t(i)));
         b = [b; b2(th(t(i)),dth(t(i)),ddth(t(i)))];
+    else
+        Acell{i} = A3(th(t(i)));
+        b = [b; b3(th(t(i)),dth(t(i)),ddth(t(i)))];
     end
 end
 A = blkdiag(Acell{:});
@@ -148,7 +156,8 @@ A = blkdiag(Acell{:});
 prob = optimproblem('ObjectiveSense','min');
 a = optimvar('a',numPoints*2,1,'LowerBound',ones(numPoints*2,1)*-linAccelLim, ...
     'UpperBound', ones(numPoints*2,1)*linAccelLim);
-prob.Constraints.cons1 = A*a*type <= b;
+prob.Constraints.ineq = A*a*type <= b;
+prob.Constraints.eq = [zeros(2,length(a)-2),eye(2)]*a == [0;0];
 objx = -xd + x0 + numPoints*dx0*dt;
 objy = -yd + y0 + numPoints*dy0*dt;
 for i = 1:numPoints
@@ -165,7 +174,7 @@ opts = optimoptions('lsqlin');
 ax = asol.a(1:2:end);
 ay = asol.a(2:2:end);
 
-% Plotting gravito inertial wrench constraints
+% %Plotting gravito inertial wrench constraints
 % figure(200)
 % hold off
 % patch([0; fCone(1,1); fCone(1,2)],[0;fCone(2,1);fCone(2,2)],[0;fCone(3,1);fCone(3,2)],[0.5,0,0.5],'FaceAlpha',0.1)
@@ -173,8 +182,8 @@ ay = asol.a(2:2:end);
 % patch([0; fCone(1,2); fCone(1,3)],[0;fCone(2,2);fCone(2,3)],[0;fCone(3,2);fCone(3,3)],[0.5,0,0.5],'FaceAlpha',0.1)
 % patch([0; fCone(1,3); fCone(1,4)],[0;fCone(2,3);fCone(2,4)],[0;fCone(3,3);fCone(3,4)],[0.5,0,0.5],'FaceAlpha',0.1)
 % patch([0; fCone(1,4); fCone(1,1)],[0;fCone(2,4);fCone(2,1)],[0;fCone(3,4);fCone(3,1)],[0.5,0,0.5],'FaceAlpha',0.1)
-% p = zeros(3,numPoints-1);
-% for i = 1:numPoints-1
+% p = zeros(3,numPoints);
+% for i = 1:numPoints
 %     th1 = th(t(i));
 %     dth1 = dth(t(i))*type;
 %     ddth1 = ddth(t(i))*type;
