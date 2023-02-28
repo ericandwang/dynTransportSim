@@ -115,12 +115,12 @@ yp = spapi(knotVec, interpPoints, interp1(cc,yy,interpPoints));
 %yp = spmak(yp.knots,[0 ones(1, length(yp.coefs)-2) 0]); % CCC remove immediately
 %dyp = fnder(yp,1);
 %ddyp = fnder(yp,2);
-[xp, yp] = intermediatePlanBridge(s0(1), s0(3), x_des(1), x_des(2), knotVec, porder); % CCC remove immediately
-dxp = fnder(xp,1);
-ddxp = fnder(xp,2);
-yp.coefs(porder:end-porder+1) = 1;
-dyp = fnder(yp,1);
-ddyp = fnder(yp,2);
+% [xp, yp] = intermediatePlanBridge(s0(1), s0(3), x_des(1), x_des(2), knotVec, porder); % CCC remove immediately
+% dxp = fnder(xp,1);
+% ddxp = fnder(xp,2);
+% yp.coefs(porder:end-porder+1) = 1;
+% dyp = fnder(yp,1);
+% ddyp = fnder(yp,2);
 
 
 %% Dynamically Feasible Spline Preinitialization
@@ -146,7 +146,8 @@ if (warmStart)
     %s2 = linspace(0,1,length(x2));
     %xp_2 = spap2(knotVec, porder, s2, x2);
     %yp_2 = spap2(knotVec, porder, s2, y2);
-    [xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder);
+    %[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder); 
+    [xp_2, yp_2] = intermediatePlanBridge(xp_1, yp_1, xp_3, yp_3, knotVec, porder);
     
     % Offsetting path parameter s
     xp_1.knots = xp_1.knots + 1;
@@ -163,15 +164,22 @@ if (warmStart)
     ySplines = {yp_0, yp_1, yp_2, yp_3, yp_4};
     numSplines = length(xSplines);
     sBounds = [sBounds(1) sBounds(2)*numSplines];
-    collPoints = collPoints*numSplines; % CCC can increase to + 7 or + 5
+    collPoints = collPoints*numSplines-(numSplines-1); % CCC can increase to + 7 or + 5
     knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
-    numPoints = length(knotVec) - (porder-1)*2;
+    numPoints = length(knotVec) - (porder-1)*2 + 1000; % adding arbitrary large number of points
     s = linspace(sBounds(1),sBounds(2),numPoints);
     ddx = zeros(1,length(s));
     ddy = zeros(1,length(s));
     for i = 1:numSplines
         ddx = ddx + fnval(fnder(xSplines{i},2),s);
         ddy = ddy + fnval(fnder(ySplines{i},2),s);
+    end
+    for i = 1:numSplines-1
+        ind = find(s == xSplines{i}.knots(end));
+        if ~isempty(ind)
+            ddx(ind) = ddx(ind) - fnval(fnder(xSplines{i},2),s(ind));
+            ddy(ind) = ddy(ind) - fnval(fnder(ySplines{i},2),s(ind));
+        end
     end
     s = linspace(sBounds(1),sBounds(2),length(ddx));
     ddxp = spap2(knotVec(3:end-2), porder-2, s, ddx);
@@ -188,11 +196,51 @@ if (warmStart)
     dx_des = [0; ... % dx
               0; ... % dy
               0];    % dth
+
+    % debugging CCC REMOVE
+    deriv = 0;
+    figure, fnplt(fnder(xp_0,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+    hold on, fnplt(fnder(xp,deriv),'color','red')
+    legend({'subpaths','','','','','interpolated path'})
+    title('path displacement')
+
+    deriv = 1;
+    figure, fnplt(fnder(xp_0,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+    hold on, fnplt(fnder(xp,deriv),'color','red')
+    legend({'subpaths','','','','','interpolated path'})
+    title('path velocity')
+
+    deriv = 2;
+    figure, fnplt(fnder(xp_0,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+    hold on, fnplt(fnder(xp,deriv),'color','red')
+    legend({'subpaths','','','','','interpolated path'})
+    title('path acceleration')
+
+    figure, plot(fnval(xp_0,[0:0.01:1]),fnval(yp_0,[0:0.01:1]),'color','blue')
+    hold on, plot(fnval(xp_1,[1:0.01:2]),fnval(yp_1,[1:0.01:2]),'color','blue')
+    hold on, plot(fnval(xp_2,[2:0.01:3]),fnval(yp_2,[2:0.01:3]),'color','blue')
+    hold on, plot(fnval(xp_3,[3:0.01:4]),fnval(yp_3,[3:0.01:4]),'color','blue')
+    hold on, plot(fnval(xp_4,[4:0.01:5]),fnval(yp_4,[4:0.01:5]),'color','blue')
+    hold on, plot(fnval(xp,s),fnval(yp,s),'color','red')
+
+
 end
 
 %% TOPP/PATH Generating Analytical Gradient Functions
 % number of constraint evaluation points
-evalPoints = (collPoints-1)*3+1;
+evalPoints = (collPoints+(numSplines-1)-1)*3+1; % correction to keep evalPoints the same as before
 ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
 % object frame y acceleration limit
 accelLim = 100;
@@ -605,7 +653,7 @@ xcoefs0 = xp.coefs';
 ycoefs0 = yp.coefs';
 coefs0 = [xcoefs0; ycoefs0];
 numCoefs = length(coefs0);
-[basis, dbasis, ddbasis, posEndpoints, velEndpoints] = splineBasisCoefs(knotVec, porder);
+[basis, dbasis, ddbasis, posEndpoints, velEndpoints, ~] = splineBasisCoefs(knotVec, porder);
 
 if (usePATHConstraintGradient)
     disp('Calculating PATH constraint gradient functions...')

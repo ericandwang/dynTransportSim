@@ -33,8 +33,9 @@ if (direction == 1)
     ddxp = spap2(knotVec(3:end-2), porder-2, s, [zeros(1,99) -1]);
     dxp = fnint(ddxp,1);
     dxp.coefs = dxp.coefs - dxp.coefs(end);
+    dxp.coefs = dxp.coefs*fnval(dxpD,1)/dxp.coefs(1);
     xp = fnint(dxp,0);
-    xp.coefs = xp.coefs*xdisp/fnval(xp,1);
+    %xp.coefs = xp.coefs*xdisp/fnval(xp,1); replaced with desired velocity scaling
     yp = xp;
     yp.coefs = yp.coefs*vAngRatio;
     xp.coefs = xp.coefs + fnval(xpD,1);
@@ -43,12 +44,13 @@ else
     ddxp = spap2(knotVec(3:end-2), porder-2, s, [1 zeros(1,99)]);
     dxp = fnint(ddxp,1);
     dxp.coefs = dxp.coefs - dxp.coefs(1);
+    dxp.coefs = dxp.coefs*fnval(dxpD,0)/dxp.coefs(end);
     xp = fnint(dxp,0);
-    xp.coefs = xp.coefs*xdisp/fnval(xp,1);
+    %xp.coefs = xp.coefs*xdisp/fnval(xp,1);
     yp = xp;
     yp.coefs = yp.coefs*vAngRatio;
-    xp.coefs = xp.coefs - xp.coefs(end) + fnval(xpD,1);
-    yp.coefs = yp.coefs - yp.coefs(end) + fnval(ypD,1);
+    xp.coefs = xp.coefs - xp.coefs(end) + fnval(xpD,0);
+    yp.coefs = yp.coefs - yp.coefs(end) + fnval(ypD,0);
 end
 
 end
