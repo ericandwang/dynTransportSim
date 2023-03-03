@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 15;
+numIterations = 1;
 % convergence rate for transit time
 alpha = 0.2; % 0.35 for example good
 beta = 0; % thought is to constrain how much replanning can push points to the edge of the gravito-inertial wrench boundary
@@ -17,6 +17,7 @@ warmStart = 1;
 useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
+accelLim = 100; % object frame y acceleration limit
 % PATH optimization
 usePATHObjectiveGradient = false;
 usePATHConstraintGradient = false;
@@ -149,6 +150,35 @@ if (warmStart)
     %[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder); 
     [xp_2, yp_2] = intermediatePlanBridge(xp_1, yp_1, xp_3, yp_3, knotVec, porder);
     
+    % Pre-optimizing (1)
+    if (genFiles)
+        dceqGenTOPP2(ss0, evalPoints, 'dceqFunGenSubPath');
+    end
+    initialVel = 20.0621/13.772; % CCC actually calculate from dxp_0
+    evalPoints = collPoints;
+    ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
+    % linear equality constraints
+    Aeq = zeros(8,evalPoints*5);
+    Aeq(1,1) = fnval(fnder(xp_1,1),sBounds(1)); % velocity endpoints
+    Aeq(2,evalPoints) = fnval(fnder(xp_1,1),sBounds(2));
+    Aeq(3,1) = fnval(fnder(yp_1,1),sBounds(1));
+    Aeq(4,evalPoints) = fnval(fnder(yp_1,1),sBounds(2));
+    Aeq(5,2*evalPoints+1) = 1; % angle endpoints
+    Aeq(6,3*evalPoints) = 1;
+    Aeq(7,3*evalPoints+1) = 1; % angular velocity endpoints
+    Aeq(8,4*evalPoints) = 1;
+    beq = [fnval(fnder(xp_0,1),sBounds(2))/tTotal_0; 0; ...
+           fnval(fnder(yp_0,1),sBounds(2))/tTotal_0; 0; ...
+           0; 0; ...
+           0; 0];
+    psolve = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+        xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, Aeq, beq);
+
+    % Pre-optimizing (2)
+    
+
+    % Pre-optimizing (3)
+
     % Offsetting path parameter s
     xp_1.knots = xp_1.knots + 1;
     yp_1.knots = yp_1.knots + 1;
@@ -198,42 +228,42 @@ if (warmStart)
               0];    % dth
 
     % debugging CCC REMOVE
-    deriv = 0;
-    figure, fnplt(fnder(xp_0,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
-    hold on, fnplt(fnder(xp,deriv),'color','red')
-    legend({'subpaths','','','','','interpolated path'})
-    title('path displacement')
-
-    deriv = 1;
-    figure, fnplt(fnder(xp_0,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
-    hold on, fnplt(fnder(xp,deriv),'color','red')
-    legend({'subpaths','','','','','interpolated path'})
-    title('path velocity')
-
-    deriv = 2;
-    figure, fnplt(fnder(xp_0,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
-    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
-    hold on, fnplt(fnder(xp,deriv),'color','red')
-    legend({'subpaths','','','','','interpolated path'})
-    title('path acceleration')
-
-    figure, plot(fnval(xp_0,[0:0.01:1]),fnval(yp_0,[0:0.01:1]),'color','blue')
-    hold on, plot(fnval(xp_1,[1:0.01:2]),fnval(yp_1,[1:0.01:2]),'color','blue')
-    hold on, plot(fnval(xp_2,[2:0.01:3]),fnval(yp_2,[2:0.01:3]),'color','blue')
-    hold on, plot(fnval(xp_3,[3:0.01:4]),fnval(yp_3,[3:0.01:4]),'color','blue')
-    hold on, plot(fnval(xp_4,[4:0.01:5]),fnval(yp_4,[4:0.01:5]),'color','blue')
-    hold on, plot(fnval(xp,s),fnval(yp,s),'color','red')
+%     deriv = 0;
+%     figure, fnplt(fnder(xp_0,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp,deriv),'color','red')
+%     legend({'subpaths','','','','','interpolated path'})
+%     title('path displacement')
+% 
+%     deriv = 1;
+%     figure, fnplt(fnder(xp_0,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp,deriv),'color','red')
+%     legend({'subpaths','','','','','interpolated path'})
+%     title('path velocity')
+% 
+%     deriv = 2;
+%     figure, fnplt(fnder(xp_0,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+%     hold on, fnplt(fnder(xp,deriv),'color','red')
+%     legend({'subpaths','','','','','interpolated path'})
+%     title('path acceleration')
+% 
+%     figure, plot(fnval(xp_0,[0:0.01:1]),fnval(yp_0,[0:0.01:1]),'color','blue')
+%     hold on, plot(fnval(xp_1,[1:0.01:2]),fnval(yp_1,[1:0.01:2]),'color','blue')
+%     hold on, plot(fnval(xp_2,[2:0.01:3]),fnval(yp_2,[2:0.01:3]),'color','blue')
+%     hold on, plot(fnval(xp_3,[3:0.01:4]),fnval(yp_3,[3:0.01:4]),'color','blue')
+%     hold on, plot(fnval(xp_4,[4:0.01:5]),fnval(yp_4,[4:0.01:5]),'color','blue')
+%     hold on, plot(fnval(xp,s),fnval(yp,s),'color','red')
 
 
 end
@@ -242,8 +272,6 @@ end
 % number of constraint evaluation points
 evalPoints = (collPoints+(numSplines-1)-1)*3+1; % correction to keep evalPoints the same as before
 ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
-% object frame y acceleration limit
-accelLim = 100;
 
 % pre-calculation for sparse gradient assembler
 dcFun1 = dcGenTOPP3(r_GC, param, fCone, vec, 1, accelLim);

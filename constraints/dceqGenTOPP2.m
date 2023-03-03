@@ -1,7 +1,7 @@
-function [] = dceqGenTOPP2(ss, nPoints)
+function [] = dceqGenTOPP2(ss, nPoints, filename)
 % gen function
 
-syms dss ddss ths dths ddths
+%syms dss ddss ths dths ddths
 dss = sym('dss',[nPoints,1]);
 ddss = sym('ddss',[nPoints,1]);
 ths = sym('ths',[nPoints,1]);
@@ -23,6 +23,10 @@ ceq = [ceq1; ceq2; ceq3];
 jac = jacobian(ceq,states)';
 
 % generating function for equality gradient
-matlabFunction(jac,'Vars',{states},'File','constraints/gen/dceqFunGen.m');
+if (nargin == 3)
+    matlabFunction(jac,'Vars',{states},'File',['constraints/gen/' filename '.m']);
+else
+    matlabFunction(jac,'Vars',{states},'File','constraints/gen/dceqFunGen.m');
+end
 
 end
