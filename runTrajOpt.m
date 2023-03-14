@@ -157,22 +157,12 @@ if (warmStart)
     initialVel = 20.0621/13.772; % CCC actually calculate from dxp_0
     evalPoints = collPoints;
     ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
-    % linear equality constraints
-    Aeq = zeros(8,evalPoints*5);
-    Aeq(1,1) = fnval(fnder(xp_1,1),sBounds(1)); % velocity endpoints
-    Aeq(2,evalPoints) = fnval(fnder(xp_1,1),sBounds(2));
-    Aeq(3,1) = fnval(fnder(yp_1,1),sBounds(1));
-    Aeq(4,evalPoints) = fnval(fnder(yp_1,1),sBounds(2));
-    Aeq(5,2*evalPoints+1) = 1; % angle endpoints
-    Aeq(6,3*evalPoints) = 1;
-    Aeq(7,3*evalPoints+1) = 1; % angular velocity endpoints
-    Aeq(8,4*evalPoints) = 1;
     beq = [fnval(fnder(xp_0,1),sBounds(2))/tTotal_0; 0; ...
            fnval(fnder(yp_0,1),sBounds(2))/tTotal_0; 0; ...
            0; 0; ...
            0; 0];
     psolve = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
-        xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, Aeq, beq);
+        xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
 
     % Pre-optimizing (2)
     

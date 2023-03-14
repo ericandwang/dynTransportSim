@@ -1,5 +1,5 @@
 function [psolve, tt_prev] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, dceqFunFile, initialVel, ...
-    xp, yp, useTOPPObjectiveGradient, useTOPPConstraintGradient, Aeq, beq)
+    xp, yp, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds)
 
     % spline
     dxp = fnder(xp,1);
@@ -51,6 +51,17 @@ function [psolve, tt_prev] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, ve
     % objective function
     fun = @(P) objTOPP(P,evalPoints);
     tt_prev = fun(P0);
+
+    % linear equality constraints
+    Aeq = zeros(8,evalPoints*5);
+    Aeq(1,1) = fnval(fnder(xp,1),sBounds(1)); % velocity endpoints
+    Aeq(2,evalPoints) = fnval(fnder(xp,1),sBounds(2));
+    Aeq(3,1) = fnval(fnder(yp,1),sBounds(1));
+    Aeq(4,evalPoints) = fnval(fnder(yp,1),sBounds(2));
+    Aeq(5,2*evalPoints+1) = 1; % angle endpoints
+    Aeq(6,3*evalPoints) = 1;
+    Aeq(7,3*evalPoints+1) = 1; % angular velocity endpoints
+    Aeq(8,4*evalPoints) = 1;
     
     % lower and upper bounds
     lb = [zeros(evalPoints,1); ones(evalPoints,1).*-Inf; ...
