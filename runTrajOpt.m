@@ -136,10 +136,10 @@ if (warmStart)
     dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
     
     % Static path (1)
-    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1);
+    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1, 4);
     
     % Static path (3)
-    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1);
+    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 8);
     
     % Static path (2)
     %x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
@@ -154,20 +154,27 @@ if (warmStart)
     if (genFiles)
         dceqGenTOPP2(ss0, evalPoints, 'dceqFunGenSubPath');
     end
-    initialVel = 20.0621/13.772; % CCC actually calculate from dxp_0
     evalPoints = collPoints;
     ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
     beq = [fnval(fnder(xp_0,1),sBounds(2))/tTotal_0; 0; ...
            fnval(fnder(yp_0,1),sBounds(2))/tTotal_0; 0; ...
            0; 0; ...
            0; 0];
-    psolve = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+    initialVel = beq(1)/fnval(fnder(xp_1,1),sBounds(1));
+    psolve1 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
         xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
 
     % Pre-optimizing (2)
     
 
     % Pre-optimizing (3)
+    beq = [0; fnval(fnder(xp_4,1),sBounds(1))/tTotal_4; ...
+           0; fnval(fnder(yp_4,1),sBounds(1))/tTotal_4; ...
+           0; 0; ...
+           0; 0];
+    initialVel = beq(2)/fnval(fnder(xp_3,1),sBounds(2));
+    psolve3 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+        xp_3, yp_3, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
 
     % Offsetting path parameter s
     xp_1.knots = xp_1.knots + 1;
@@ -217,43 +224,43 @@ if (warmStart)
               0; ... % dy
               0];    % dth
 
-    % debugging CCC REMOVE
-%     deriv = 0;
-%     figure, fnplt(fnder(xp_0,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_1,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_2,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_3,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_4,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp,deriv),'color','red')
-%     legend({'subpaths','','','','','interpolated path'})
-%     title('path displacement')
-% 
-%     deriv = 1;
-%     figure, fnplt(fnder(xp_0,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_1,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_2,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_3,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_4,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp,deriv),'color','red')
-%     legend({'subpaths','','','','','interpolated path'})
-%     title('path velocity')
-% 
-%     deriv = 2;
-%     figure, fnplt(fnder(xp_0,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_1,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_2,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_3,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp_4,deriv),'color','blue')
-%     hold on, fnplt(fnder(xp,deriv),'color','red')
-%     legend({'subpaths','','','','','interpolated path'})
-%     title('path acceleration')
-% 
-%     figure, plot(fnval(xp_0,[0:0.01:1]),fnval(yp_0,[0:0.01:1]),'color','blue')
-%     hold on, plot(fnval(xp_1,[1:0.01:2]),fnval(yp_1,[1:0.01:2]),'color','blue')
-%     hold on, plot(fnval(xp_2,[2:0.01:3]),fnval(yp_2,[2:0.01:3]),'color','blue')
-%     hold on, plot(fnval(xp_3,[3:0.01:4]),fnval(yp_3,[3:0.01:4]),'color','blue')
-%     hold on, plot(fnval(xp_4,[4:0.01:5]),fnval(yp_4,[4:0.01:5]),'color','blue')
-%     hold on, plot(fnval(xp,s),fnval(yp,s),'color','red')
+    %debugging CCC REMOVE
+    deriv = 0;
+    figure, fnplt(fnder(xp_0,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+    hold on, fnplt(fnder(xp,deriv),'color','red')
+    legend({'subpaths','','','','','interpolated path'})
+    title('path displacement')
+
+    deriv = 1;
+    figure, fnplt(fnder(xp_0,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+    hold on, fnplt(fnder(xp,deriv),'color','red')
+    legend({'subpaths','','','','','interpolated path'})
+    title('path velocity')
+
+    deriv = 2;
+    figure, fnplt(fnder(xp_0,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_1,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_2,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_3,deriv),'color','blue')
+    hold on, fnplt(fnder(xp_4,deriv),'color','blue')
+    hold on, fnplt(fnder(xp,deriv),'color','red')
+    legend({'subpaths','','','','','interpolated path'})
+    title('path acceleration')
+
+    figure, plot(fnval(xp_0,[0:0.01:1]),fnval(yp_0,[0:0.01:1]),'color','blue')
+    hold on, plot(fnval(xp_1,[1:0.01:2]),fnval(yp_1,[1:0.01:2]),'color','blue')
+    hold on, plot(fnval(xp_2,[2:0.01:3]),fnval(yp_2,[2:0.01:3]),'color','blue')
+    hold on, plot(fnval(xp_3,[3:0.01:4]),fnval(yp_3,[3:0.01:4]),'color','blue')
+    hold on, plot(fnval(xp_4,[4:0.01:5]),fnval(yp_4,[4:0.01:5]),'color','blue')
+    hold on, plot(fnval(xp,s),fnval(yp,s),'color','red')
 
 
 end

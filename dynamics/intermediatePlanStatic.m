@@ -1,10 +1,10 @@
-function [xp, yp] = intermediatePlanStatic(xpD, ypD, knotVec, porder, direction)
+function [xp, yp] = intermediatePlanStatic(xpD, ypD, knotVec, porder, direction, accelAdd)
 % static path that connects to a dynamic path. Connects to end if direction
 % = 1 and connect to start if direction = -1. Currently using straight line
 % approach
 
 xdisp = abs((fnval(xpD,1) - fnval(xpD,0))*1.5); % arbitrary distance
-numPoints = 100;
+numPoints = length(knotVec) - 2*(porder-1); % 100;
 dxpD = fnder(xpD,1);
 dypD = fnder(ypD,1);
 
@@ -14,23 +14,27 @@ if (direction == 1)
     yend = fnval(ypD,1) + xdisp*sign(fnval(dxpD,1))*vAngRatio;
     x = linspace(fnval(xpD,1),xend,numPoints);
     y = linspace(fnval(ypD,1),yend,numPoints);
-    s = linspace(0,1,length(x));
-    xp = spap2(knotVec, porder, s, x);
-    yp = spap2(knotVec, porder, s, y);
+    s = linspace(knotVec(1),knotVec(end),length(x));
+    %xp = spap2(knotVec, porder, s, x);
+    %yp = spap2(knotVec, porder, s, y);
 else
     vAngRatio = fnval(dypD,0)/fnval(dxpD,0);
     xend = fnval(xpD,0) - xdisp*sign(fnval(dxpD,0));
     yend = fnval(ypD,0) - xdisp*sign(fnval(dxpD,0))*vAngRatio;
     x = linspace(xend,fnval(xpD,0),numPoints);
     y = linspace(yend,fnval(ypD,0),numPoints);
-    s = linspace(0,1,length(x));
-    xp = spap2(knotVec, porder, s, x);
-    yp = spap2(knotVec, porder, s, y);
+    s = linspace(knotVec(1),knotVec(end),length(x));
+    %xp = spap2(knotVec, porder, s, x);
+    %yp = spap2(knotVec, porder, s, y);
 end
 
-% New integration method CCC TODO
+% New integration method
 if (direction == 1)
-    ddxp = spap2(knotVec(3:end-2), porder-2, s, [zeros(1,99) -1]);
+    accelProfile = linspace(0,-1,numPoints);
+    leftTri = linspace(0,accelAdd,ceil(numPoints/2));
+    rightTri = linspace(-accelAdd,0,ceil(numPoints/2));
+    accelProfile = accelProfile + [leftTri(1:end-1) 0 rightTri(2:end)];
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, accelProfile);%[zeros(1,99) -1]);
     dxp = fnint(ddxp,1);
     dxp.coefs = dxp.coefs - dxp.coefs(end);
     dxp.coefs = dxp.coefs*fnval(dxpD,1)/dxp.coefs(1);
@@ -41,7 +45,11 @@ if (direction == 1)
     xp.coefs = xp.coefs + fnval(xpD,1);
     yp.coefs = yp.coefs + fnval(ypD,1);
 else
-    ddxp = spap2(knotVec(3:end-2), porder-2, s, [1 zeros(1,99)]);
+    accelProfile = linspace(1,0,numPoints);
+    leftTri = linspace(0,accelAdd,ceil(numPoints/2));
+    rightTri = linspace(-accelAdd,0,ceil(numPoints/2));
+    accelProfile = accelProfile + [leftTri(1:end-1) 0 rightTri(2:end)];
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, accelProfile);% [1 zeros(1,99)]);
     dxp = fnint(ddxp,1);
     dxp.coefs = dxp.coefs - dxp.coefs(1);
     dxp.coefs = dxp.coefs*fnval(dxpD,0)/dxp.coefs(end);
