@@ -128,6 +128,8 @@ yp = spapi(knotVec, interpPoints, interp1(cc,yy,interpPoints));
 if (warmStart)
     disp('Calculating dynamically feasible warm start...')
     numPoints = 100;
+    evalPoints = collPoints;
+    ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
     % statically infeasible IC to statically feasible point (0)
     [th_0, dth_0, ddth_0, tTotal_0, xp_0, yp_0] = intermediatePlanDynamic(s0, x_des, fCone, param, knotVec, porder, 1);
     % statically feasible point to statically infeasible FC (4)
@@ -150,12 +152,19 @@ if (warmStart)
     %[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder); 
     [xp_2, yp_2] = intermediatePlanBridge(xp_1, yp_1, xp_3, yp_3, knotVec, porder);
     
+    % Pre-optimizing (0)
+    dss0 = ones(evalPoints,1).*1/tTotal_0;
+    ddss0 = zeros(evalPoints,1);
+    th0 = th_0(ss0*tTotal_0);
+    dth0 = dth_0(ss0*tTotal_0);
+    ddth0 = ddth_0(ss0*tTotal_0);
+    P0 = [dss0 ddss0 th0 dth0 ddth0];
+
     % Pre-optimizing (1)
     if (genFiles)
         dceqGenTOPP2(ss0, evalPoints, 'dceqFunGenSubPath');
     end
-    evalPoints = collPoints;
-    ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
+    
     beq = [fnval(fnder(xp_0,1),sBounds(2))/tTotal_0; 0; ...
            fnval(fnder(yp_0,1),sBounds(2))/tTotal_0; 0; ...
            0; 0; ...
@@ -163,9 +172,17 @@ if (warmStart)
     initialVel = beq(1)/fnval(fnder(xp_1,1),sBounds(1));
     psolve1 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
         xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
+    P1 = reshape(psolve1,numel(psolve1)/5,5);
 
     % Pre-optimizing (2)
-    
+    beq = [0; 0; ...
+           0; 0; ...
+           0; 0; ...
+           0; 0];
+    initialVel = 1; % need some sort of good guess
+    psolve2 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+        xp_2, yp_2, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
+    P2 = reshape(psolve2,numel(psolve2)/5,5);
 
     % Pre-optimizing (3)
     beq = [0; fnval(fnder(xp_4,1),sBounds(1))/tTotal_4; ...
@@ -175,6 +192,15 @@ if (warmStart)
     initialVel = beq(2)/fnval(fnder(xp_3,1),sBounds(2));
     psolve3 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
         xp_3, yp_3, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
+    P3 = reshape(psolve3,numel(psolve3)/5,5);
+
+    % Pre-optimizing (4)
+    dss4 = ones(evalPoints,1).*1/tTotal_4;
+    ddss4 = zeros(evalPoints,1);
+    th4 = th_4(ss0*tTotal_4);
+    dth4 = dth_4(ss0*tTotal_4);
+    ddth4 = ddth_4(ss0*tTotal_4);
+    P4 = [dss4 ddss4 th4 dth4 ddth4];
 
     % Offsetting path parameter s
     xp_1.knots = xp_1.knots + 1;
@@ -262,7 +288,6 @@ if (warmStart)
     hold on, plot(fnval(xp_4,[4:0.01:5]),fnval(yp_4,[4:0.01:5]),'color','blue')
     hold on, plot(fnval(xp,s),fnval(yp,s),'color','red')
 
-
 end
 
 %% TOPP/PATH Generating Analytical Gradient Functions
@@ -311,7 +336,7 @@ initialVel = 1e-2; %1;
 if (iii == 1)
     if (warmStart)
         % CCC replaced naive initialization with feasible spline
-        % preinitialization results
+        % preinitialization results TODO
         dss0 = ones(evalPoints,1).*1/tTotal_0;
         dss0(ss0 >= 4) = 1/tTotal_4;    
         ddss0 = zeros(evalPoints,1);
