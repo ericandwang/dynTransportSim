@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 1;
+numIterations = 10;
 % convergence rate for transit time
 alpha = 0.2; % 0.35 for example good
 beta = 0; % thought is to constrain how much replanning can push points to the edge of the gravito-inertial wrench boundary
@@ -213,11 +213,11 @@ if (warmStart)
     yp_4.knots = yp_4.knots + 4;
     
     % Stitching splines together
-    xSplines = {xp_0, xp_1, xp_2, xp_3, xp_4};
-    ySplines = {yp_0, yp_1, yp_2, yp_3, yp_4};
+    xSplines = {xp_0, xp_1, xp_2, xp_3};%, xp_4};
+    ySplines = {yp_0, yp_1, yp_2, yp_3};%, yp_4};
     numSplines = length(xSplines);
     sBounds = [sBounds(1) sBounds(2)*numSplines];
-    collPoints = collPoints*numSplines-(numSplines-1); % CCC can increase to + 7 or + 5
+    collPoints = collPoints*numSplines-(numSplines-1);
     knotVec = [ones(1,porder-1).*sBounds(1) linspace(sBounds(1),sBounds(2),collPoints) ones(1,porder-1).*sBounds(2)];
     numPoints = length(knotVec) - (porder-1)*2 + 1000; % adding arbitrary large number of points
     s = linspace(sBounds(1),sBounds(2),numPoints);
@@ -242,13 +242,33 @@ if (warmStart)
     xp = fnint(dxp,fnval(xSplines{1},0));
     yp = fnint(dyp,fnval(ySplines{1},0));
     
-    % debugging intermediate path termination CCC
+    % debugging intermediate path termination with 3 splines CCC
+%     x_des = [fnval(xp,sBounds(2)); ... % x
+%              fnval(yp,sBounds(2)); ... % y
+%              0];   % th
+%     dx_des = [0; ... % dx
+%               0; ... % dy
+%               0];    % dth
+
+    % debugging intermediate path termination with 4 splines CCC
     x_des = [fnval(xp,sBounds(2)); ... % x
              fnval(yp,sBounds(2)); ... % y
              0];   % th
-    dx_des = [0; ... % dx
-              0; ... % dy
+    dx_des = [fnval(fnder(xp,1),sBounds(2))/tTotal_4; ... % dx
+              fnval(fnder(yp,1),sBounds(2))/tTotal_4; ... % dy
               0];    % dth
+
+    % concatenating warm start time parameterization
+    P0 = [P0(1:end-1,:); (P0(end,:)+P1(1,:))/2; ...
+         P1(2:end-1,:); (P1(end,:)+P2(1,:))/2; ...
+         P2(2:end-1,:); (P2(end,:)+P3(1,:))/2; ...
+         P3(2:end,:)];
+%     P0 = [P0(1:end-1,:); (P0(end,:)+P1(1,:))/2; ... CCC
+%          P1(2:end-1,:); (P1(end,:)+P2(1,:))/2; ...
+%          P2(2:end-1,:); (P2(end,:)+P3(1,:))/2; ...
+%          P3(2:end-1,:); (P3(end,:)+P4(1,:))/2; ...
+%          P4(2:end,:)];
+    sWarm = linspace(sBounds(1),sBounds(2),size(P0,1))';
 
     %debugging CCC REMOVE
     deriv = 0;
@@ -293,6 +313,7 @@ end
 %% TOPP/PATH Generating Analytical Gradient Functions
 % number of constraint evaluation points
 evalPoints = (collPoints+(numSplines-1)-1)*3+1; % correction to keep evalPoints the same as before
+evalPoints = length(sWarm)*2; % trying fewer points CCC TODO (added extra *2)
 ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
 
 % pre-calculation for sparse gradient assembler
@@ -336,20 +357,24 @@ initialVel = 1e-2; %1;
 if (iii == 1)
     if (warmStart)
         % CCC replaced naive initialization with feasible spline
-        % preinitialization results TODO
-        dss0 = ones(evalPoints,1).*1/tTotal_0;
-        dss0(ss0 >= 4) = 1/tTotal_4;    
-        ddss0 = zeros(evalPoints,1);
-        for ii = 1:length(ddss0)-1
-            ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
-        end
-        th0 = th_0(ss0*tTotal_0);
-        th0(ss0 >= 4) = th_4((ss0(ss0>=4)-4)*tTotal_4);
-        dth0 = dth_0(ss0*tTotal_0);
-        dth0(ss0 >= 4) = dth_4((ss0(ss0>=4)-4)*tTotal_4);
-        ddth0 = ddth_0(ss0*tTotal_0);
-        ddth0(ss0 >= 4) = ddth_4((ss0(ss0>=4)-4)*tTotal_4);
-        P0 = [dss0; ddss0; th0; dth0; ddth0];
+        % preinitialization results
+%         dss0 = ones(evalPoints,1).*1/tTotal_0;
+%         dss0(ss0 >= 4) = 1/tTotal_4;    
+%         ddss0 = zeros(evalPoints,1);
+%         for ii = 1:length(ddss0)-1
+%             ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
+%         end
+%         th0 = th_0(ss0*tTotal_0);
+%         th0(ss0 >= 4) = th_4((ss0(ss0>=4)-4)*tTotal_4);
+%         dth0 = dth_0(ss0*tTotal_0);
+%         dth0(ss0 >= 4) = dth_4((ss0(ss0>=4)-4)*tTotal_4);
+%         ddth0 = ddth_0(ss0*tTotal_0);
+%         ddth0(ss0 >= 4) = ddth_4((ss0(ss0>=4)-4)*tTotal_4);
+%         P0 = [dss0; ddss0; th0; dth0; ddth0];
+        % Taking warm start initialization and interpolating to fit
+        % evalPoints TODO TRY CHANGE CCC
+        P0 = interp1(sWarm,P0,ss0);
+        P0 = reshape(P0,numel(P0),1);
     else
         ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
         dss0 = ones(evalPoints,1).*initialVel;

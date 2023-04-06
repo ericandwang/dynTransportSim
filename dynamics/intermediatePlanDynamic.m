@@ -9,9 +9,9 @@ mu = param(10);
 
 % Defining initial and desired values
 x0 = s0(1);
-dx0 = s0(2);
+dx0 = s0(2)*type;
 y0 = s0(3);
-dy0 = s0(4);
+dy0 = s0(4)*type;
 th0 = s0(5);
 dth0 = s0(6);
 r_GC = s0(7:8,1);
