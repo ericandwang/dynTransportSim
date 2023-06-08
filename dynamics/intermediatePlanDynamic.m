@@ -174,14 +174,15 @@ opts = optimoptions('lsqlin');
 ax = asol.a(1:2:end);
 ay = asol.a(2:2:end);
 
-% %Plotting gravito inertial wrench constraints
+%Plotting gravito inertial wrench constraints
 % figure(200)
 % hold off
-% patch([0; fCone(1,1); fCone(1,2)],[0;fCone(2,1);fCone(2,2)],[0;fCone(3,1);fCone(3,2)],[0.5,0,0.5],'FaceAlpha',0.1)
+% stretch = 4;
+% patch([0; fCone(1,1)*stretch; fCone(1,2)*stretch],[0;fCone(2,1)*stretch;fCone(2,2)*stretch],[0;fCone(3,1)*stretch;fCone(3,2)*stretch],[0.5,0,0.5],'FaceAlpha',0.1)
 % hold on
-% patch([0; fCone(1,2); fCone(1,3)],[0;fCone(2,2);fCone(2,3)],[0;fCone(3,2);fCone(3,3)],[0.5,0,0.5],'FaceAlpha',0.1)
-% patch([0; fCone(1,3); fCone(1,4)],[0;fCone(2,3);fCone(2,4)],[0;fCone(3,3);fCone(3,4)],[0.5,0,0.5],'FaceAlpha',0.1)
-% patch([0; fCone(1,4); fCone(1,1)],[0;fCone(2,4);fCone(2,1)],[0;fCone(3,4);fCone(3,1)],[0.5,0,0.5],'FaceAlpha',0.1)
+% patch([0; fCone(1,2)*stretch; fCone(1,3)*stretch],[0;fCone(2,2)*stretch;fCone(2,3)*stretch],[0;fCone(3,2)*stretch;fCone(3,3)*stretch],[0.5,0,0.5],'FaceAlpha',0.1)
+% patch([0; fCone(1,3)*stretch; fCone(1,4)*stretch],[0;fCone(2,3)*stretch;fCone(2,4)*stretch],[0;fCone(3,3)*stretch;fCone(3,4)*stretch],[0.5,0,0.5],'FaceAlpha',0.1)
+% patch([0; fCone(1,4)*stretch; fCone(1,1)*stretch],[0;fCone(2,4)*stretch;fCone(2,1)*stretch],[0;fCone(3,4)*stretch;fCone(3,1)*stretch],[0.5,0,0.5],'FaceAlpha',0.1)
 % p = zeros(3,numPoints);
 % for i = 1:numPoints
 %     th1 = th(t(i));
@@ -235,11 +236,51 @@ yp = fnint(dyp,y(1));
 if (type == -1) % flipping representation
     xp.coefs = flip(xp.coefs);
     yp.coefs = flip(yp.coefs);
-    x = flip(x); vx = flip(vx); ax = flip(ax);
-    y = flip(y); vy = flip(vy); ay = flip(ay);
+    x = flip(x); vx = -flip(vx); ax = -flip(ax);
+    y = flip(y); vy = -flip(vy); ay = -flip(ay);
     th = @(t) th(tTotal - t);
-    dth = @(t) dth(tTotal - t);
-    ddth = @(t) ddth(tTotal - t);
+    dth = @(t) -dth(tTotal - t);
+    ddth = @(t) -ddth(tTotal - t);
+
+    % this seemed to satisfy constraints but not boundary conditions 6/8
+%     ddxp = spap2(knotVec(3:end-2), porder-2, s, ax*tTotal^2);
+%     ddyp = spap2(knotVec(3:end-2), porder-2, s, ay*tTotal^2);
+%     dxp = fnint(ddxp,vx(1)*tTotal);
+%     dyp = fnint(ddyp,vy(1)*tTotal);
+%     xp = fnint(dxp,x(1));
+%     yp = fnint(dyp,y(1));
+%     xp.coefs = xp.coefs + x0 - fnval(xp,knotVec(end));
+%     yp.coefs = yp.coefs + y0 - fnval(yp,knotVec(end));
+
+
+%     figure(300)
+%     hold off
+%     stretch = 4;
+%     patch([0; fCone(1,1)*stretch; fCone(1,2)*stretch],[0;fCone(2,1)*stretch;fCone(2,2)*stretch],[0;fCone(3,1)*stretch;fCone(3,2)*stretch],[0.5,0,0.5],'FaceAlpha',0.1)
+%     hold on
+%     patch([0; fCone(1,2)*stretch; fCone(1,3)*stretch],[0;fCone(2,2)*stretch;fCone(2,3)*stretch],[0;fCone(3,2)*stretch;fCone(3,3)*stretch],[0.5,0,0.5],'FaceAlpha',0.1)
+%     patch([0; fCone(1,3)*stretch; fCone(1,4)*stretch],[0;fCone(2,3)*stretch;fCone(2,4)*stretch],[0;fCone(3,3)*stretch;fCone(3,4)*stretch],[0.5,0,0.5],'FaceAlpha',0.1)
+%     patch([0; fCone(1,4)*stretch; fCone(1,1)*stretch],[0;fCone(2,4)*stretch;fCone(2,1)*stretch],[0;fCone(3,4)*stretch;fCone(3,1)*stretch],[0.5,0,0.5],'FaceAlpha',0.1)
+%     p = zeros(3,numPoints);
+%     for i = 1:numPoints
+%         th1 = th(t(i));
+%         dth1 = dth(t(i));
+%         ddth1 = ddth(t(i));
+%         ax_G = ax(i);
+%         ay_G = ay(i);
+%         p(:,i) = [cos(th1) sin(th1) -R_GC*sin(th_GC); ...
+%                   -sin(th1) cos(th1) R_GC*cos(th_GC); ...
+%                   0 0 1]*[ax_G; ay_G; ddth1] + ...
+%                   [g*sin(th1)-R_GC*dth1^2*cos(th_GC); ...
+%                   g*cos(th1)-R_GC*dth1^2*sin(th_GC); 0];
+%     end
+%     scatter3(p(1,1),p(2,1),p(3,1),'k');
+%     plot3(p(1,:),p(2,:),p(3,:),'b')
+%     xlabel('$\ddot{x}_{c} [m/s^2]$','interpreter','latex')
+%     ylabel('$\ddot{y}_{c} [m/s^2]$','interpreter','latex')
+%     zlabel('$\ddot{\theta}_{c} [rad/s^2]$','interpreter','latex')
+%     title('Gravito-Inertial Wrench Constraints')
+
 end
 
 % Appending path to drive vx and vy to 0 (statically stable section)

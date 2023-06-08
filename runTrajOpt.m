@@ -213,8 +213,8 @@ if (warmStart)
     yp_4.knots = yp_4.knots + 4;
     
     % Stitching splines together
-    xSplines = {xp_0, xp_1, xp_2, xp_3};%, xp_4};
-    ySplines = {yp_0, yp_1, yp_2, yp_3};%, yp_4};
+    xSplines = {xp_0, xp_1, xp_2, xp_3, xp_4};
+    ySplines = {yp_0, yp_1, yp_2, yp_3, yp_4};
     numSplines = length(xSplines);
     sBounds = [sBounds(1) sBounds(2)*numSplines];
     collPoints = collPoints*numSplines-(numSplines-1);
@@ -251,23 +251,23 @@ if (warmStart)
 %               0];    % dth
 
     % debugging intermediate path termination with 4 splines CCC
-    x_des = [fnval(xp,sBounds(2)); ... % x
-             fnval(yp,sBounds(2)); ... % y
-             0];   % th
-    dx_des = [fnval(fnder(xp,1),sBounds(2))/tTotal_4; ... % dx
-              fnval(fnder(yp,1),sBounds(2))/tTotal_4; ... % dy
-              0];    % dth
+%     x_des = [fnval(xp,sBounds(2)); ... % x
+%              fnval(yp,sBounds(2)); ... % y
+%              0];   % th
+%     dx_des = [fnval(fnder(xp,1),sBounds(2))/tTotal_4; ... % dx
+%               fnval(fnder(yp,1),sBounds(2))/tTotal_4; ... % dy
+%               0];    % dth
 
     % concatenating warm start time parameterization
-    P0 = [P0(1:end-1,:); (P0(end,:)+P1(1,:))/2; ...
-         P1(2:end-1,:); (P1(end,:)+P2(1,:))/2; ...
-         P2(2:end-1,:); (P2(end,:)+P3(1,:))/2; ...
-         P3(2:end,:)];
-%     P0 = [P0(1:end-1,:); (P0(end,:)+P1(1,:))/2; ... CCC
+%     P0 = [P0(1:end-1,:); (P0(end,:)+P1(1,:))/2; ...
 %          P1(2:end-1,:); (P1(end,:)+P2(1,:))/2; ...
 %          P2(2:end-1,:); (P2(end,:)+P3(1,:))/2; ...
-%          P3(2:end-1,:); (P3(end,:)+P4(1,:))/2; ...
-%          P4(2:end,:)];
+%          P3(2:end,:)];
+    P0 = [P0(1:end-1,:); (P0(end,:)+P1(1,:))/2; ... % CCC
+         P1(2:end-1,:); (P1(end,:)+P2(1,:))/2; ...
+         P2(2:end-1,:); (P2(end,:)+P3(1,:))/2; ...
+         P3(2:end-1,:); (P3(end,:)+P4(1,:))/2; ...
+         P4(2:end,:)];
     sWarm = linspace(sBounds(1),sBounds(2),size(P0,1))';
 
     %debugging CCC REMOVE
