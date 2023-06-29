@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 1;
+numIterations = 15;
 % Gen files
 genFiles = 0;
 % Warm start?
@@ -39,7 +39,7 @@ I_C = 0.05; % kg*m^2
 r_p1C = [objectW/2; objectH/2]; % m
 r_p2C = [-objectW/2; objectH/2]; % m
 g = 9.81;
-mu = 0.1/2;%0.1; %0.3 %0.5
+mu = 0.15/2.5;%0.1; %0.3 %0.5
 param = [m_G; I_G; m_C; I_C; r_p1C; r_p2C; g; mu; handW; handH; objectW; objectH];
 % controller actuation limits (bidirectional)
 u_max = [30; 30; 20];
@@ -62,7 +62,7 @@ s0 = [-5; ...        % x_G -5
       0; ...
       0; ...        % th_C
       0];           % dth_C
-s0 = [-5; ...        % x_G -5
+s0 = [-0.5; ...        % x_G -5
       0; ...        % dx_G
       0; ...        % y_G 5
       0; ...        % dy_G
@@ -81,7 +81,7 @@ x_des = [5; ... % x
 dx_des = [1; ... % dx
           1; ... % dy
           0];    % dth
-x_des = [0; ... % x
+x_des = [0.5; ... % x
          0; ... % y
          0];   % th
 dx_des = [0; ... % dx
@@ -110,14 +110,14 @@ dxp = fnder(xp,1);
 ddxp = fnder(xp,2);
 yp = spapi(knotVec, interpPoints, interp1(cc,yy,interpPoints));
 %yp = spmak(yp.knots,[0 ones(1, length(yp.coefs)-2) 0]); % CCC remove immediately
-%dyp = fnder(yp,1);
-%ddyp = fnder(yp,2);
-[xp, yp] = intermediatePlanBridge(s0(1), s0(3), x_des(1), x_des(2), knotVec, porder); % CCC remove immediately
-dxp = fnder(xp,1);
-ddxp = fnder(xp,2);
-yp.coefs(porder:end-porder+1) = 1;
 dyp = fnder(yp,1);
 ddyp = fnder(yp,2);
+% [xp, yp] = intermediatePlanBridge(s0(1), s0(3), x_des(1), x_des(2), knotVec, porder); % CCC remove immediately
+% dxp = fnder(xp,1);
+% ddxp = fnder(xp,2);
+% yp.coefs(porder:end-porder+1) = 1;
+% dyp = fnder(yp,1);
+% ddyp = fnder(yp,2);
 
 
 %% Dynamically Feasible Spline Preinitialization
@@ -335,10 +335,10 @@ ub = [ones(evalPoints,1).*Inf; ones(evalPoints,1).*Inf; ...
 if (useLinearization) % CCC not aligning with original constraint function now (decomissioned)
     nonlcon = @(P) nonlinconTOPP_lin(P, s0, ss0, param, fCone, vec, tol, dxp, ddxp, dyp, ddyp, dcFun, dceqFun, th0);
 else
-    if (iii == numIterations)
+    if (iii > numIterations-5)
         nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
     else
-        nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*5, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
+        nonlcon = @(P) nonlinconTOPP(P, s0, ss0, param, fCone, vec, tol*10, xp, dxp, ddxp, yp, dyp, ddyp, dcFun, dceqFun, accelLim);
     end
 end
 
@@ -433,13 +433,19 @@ title('Gravito-Inertial Wrench Constraints')
 dT = 2.*(ss(2:end)-ss(1:end-1))./(dss(2:end)+dss(1:end-1));
 tss = cumsum([0; dT]);
 dt = min(dT)/10;
+ddx = fnval(ddxp,ss).*dss.^2 + fnval(dxp,ss).*ddss;
+ddy = fnval(ddyp,ss).*dss.^2 + fnval(dyp,ss).*ddss;
 dx = fnval(dxp,ss).*dss;
 dy = fnval(dyp,ss).*dss;
+ddth = ddths;
 dth = dths;
 t = 0:dt:tss(end);
 dx = interp1(tss,dx,t);
 dy = interp1(tss,dy,t);
+ddx = interp1(tss,ddx,t);
+ddy = interp1(tss,ddy,t);
 dth = interp1(tss,dth,t);
+ddth = interp1(tss,ddth,t);
 x_G = cumsum(dx.*dt)' + s0(1);
 y_G = cumsum(dy.*dt)' + s0(3);
 th = cumsum(dth.*dt)' + s0(5);
@@ -450,6 +456,7 @@ fRx = forces(3,:); fRy = forces(4,:);
 fLx = interp1(tss,fLx,t); fLy = interp1(tss,fLy,t);
 fRx = interp1(tss,fRx,t); fRy = interp1(tss,fRy,t);
 fLx = fLx*xForceStretch; fRx = fRx*xForceStretch;
+
 
 if (showAnimation)
     % initialize animation
@@ -680,3 +687,113 @@ plot(fnval(xp,splot), fnval(yp,splot))
 xlabel('x [m]')
 ylabel('y [m]')
 title('Path Iteration')
+
+%% Joint Trajectory
+dT = 2.*(ss(2:end)-ss(1:end-1))./(dss(2:end)+dss(1:end-1));
+tss = cumsum([0; dT]);
+dt = min(dT)/10;
+ddx = fnval(ddxp,ss).*dss.^2 + fnval(dxp,ss).*ddss;
+ddy = fnval(ddyp,ss).*dss.^2 + fnval(dyp,ss).*ddss;
+dx = fnval(dxp,ss).*dss;
+dy = fnval(dyp,ss).*dss;
+ddth = ddths;
+dth = dths;
+t = 0:dt:tss(end);
+dx = interp1(tss,dx,t);
+dy = interp1(tss,dy,t);
+ddx = interp1(tss,ddx,t);
+ddy = interp1(tss,ddy,t);
+dth = interp1(tss,dth,t);
+ddth = interp1(tss,ddth,t);
+x_G = cumsum(dx.*dt)' + s0(1);
+y_G = cumsum(dy.*dt)' + s0(3);
+th = cumsum(dth.*dt)' + s0(5);
+forces = individualForces(vec,p);
+forces = forces./max(forces).*0.9*objectH;
+fLx = forces(1,:); fLy = forces(2,:);
+fRx = forces(3,:); fRy = forces(4,:);
+fLx = interp1(tss,fLx,t); fLy = interp1(tss,fLy,t);
+fRx = interp1(tss,fRx,t); fRy = interp1(tss,fRy,t);
+fLx = fLx*xForceStretch; fRx = fRx*xForceStretch;
+
+% % joint space conversion
+% r1 = 0.4565;
+% r2 = 0.362;
+% height = 0.5;
+% syms th1 th2
+% for i = 1:length(x_G)
+%     eq1 = r1*cos(th1) + r2*cos(th1+th2) == height;
+%     eq2 = -r1*sin(th1) - r2*sin(th1+th2) == x_G(i);
+%     if (i == 1)
+%         S = vpasolve([eq1,eq2],[th1,th2],[pi/2,-pi/2]);
+%     else
+%         S = vpasolve([eq1,eq2],[th1,th2],[th1_(i-1),th2_(i-1)]);
+%     end
+%     th1_(i) = S.th1;
+%     th2_(i) = S.th2;
+%     i
+% end
+% th3_ = th' - th1_ - th2_;
+% th1 = double(th1_);
+% th2 = double(th2_);
+% th3 = double(th3_);
+% 
+% % Velocity calculation
+% dt = t(2) - t(1);
+% dth1 = [diff(th1)/dt 0];
+% dth2 = [diff(th2)/dt 0];
+% dth3 = [diff(th3)/dt 0];
+% 
+% % Acceleration calculation
+% ddth1 = [diff(dth1)/dt 0];
+% ddth2 = [diff(dth2)/dt 0];
+% ddth3 = [diff(dth3)/dt 0];
+% 
+% % Smoothing
+% ddth1 = smooth(ddth1,50);
+% ddth2 = smooth(ddth2,50);
+% ddth3 = smooth(ddth3,50);
+% 
+% % Plotting
+% figure, plot(t, th1*180/pi)
+% hold on, plot(t, th2*180/pi)
+% plot(t,th3*180/pi)
+% 
+% figure, plot(t, dth1)
+% hold on, plot(t, dth2)
+% plot(t,dth3)
+% 
+% figure, plot(t, ddth1)
+% hold on, plot(t, ddth2)
+% plot(t,ddth3)
+% 
+% 
+% % dT = 0.01;
+% % tT = 0:dT:t(end);
+% % x = interp1(t,x_G,tT);
+% % dx = interp1(t,dx,tT);
+% % ddx = interp1(t,ddx,tT);
+% % th = interp1(t,th,tT);
+% % dth = interp1(t,dth,tT);
+% % ddth = interp1(t,ddth,tT);
+% % t = tT;
+% dT = 0.01;
+% tT = 0:dT:t(end);
+% th1 = interp1(t,th1,tT);
+% th2 = interp1(t,th2,tT);
+% th3 = interp1(t,th3,tT);
+% dth1 = interp1(t,dth1,tT);
+% dth2 = interp1(t,dth2,tT);
+% dth3 = interp1(t,dth3,tT);
+% ddth1 = interp1(t,ddth1,tT);
+% ddth2 = interp1(t,ddth2,tT);
+% ddth3 = interp1(t,ddth3,tT);
+% t = tT;
+% 
+% %% Save to .csv
+% z = th1'*0;
+% th = [z th1' z th2' th3' z];
+% dth = [z dth1' z dth2' ddth3' z];
+% ddth = [z ddth1' z dth2' ddth3' z];
+% matrix = [t' th dth ddth];
+% %writematrix(matrix,'traj4-10-23_straightline.csv');
