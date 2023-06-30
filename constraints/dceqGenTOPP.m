@@ -1,6 +1,6 @@
 function dceq = dceqGenTOPP(ss, nPoints)
 
-syms dss ddss ths dths ddths
+%syms dss ddss ths dths ddths
 dss = sym('dss',[nPoints,1]);
 ddss = sym('ddss',[nPoints,1]);
 ths = sym('ths',[nPoints,1]);
