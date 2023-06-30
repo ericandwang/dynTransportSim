@@ -45,7 +45,7 @@ if (direction == 1)
     xp.coefs = xp.coefs + fnval(xpD,1);
     yp.coefs = yp.coefs + fnval(ypD,1);
 else
-    accelProfile = linspace(1,0,numPoints);
+    accelProfile = linspace(1,0,numPoints); % CCC 1/3,0,numPoints at one point
     leftTri = linspace(0,accelAdd,ceil(numPoints/2));
     rightTri = linspace(-accelAdd,0,ceil(numPoints/2));
     accelProfile = accelProfile + [leftTri(1:end-1) 0 rightTri(2:end)];

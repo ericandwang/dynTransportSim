@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 10;
+numIterations = 5;
 % convergence rate for transit time
 alpha = 0.2; % 0.35 for example good
 beta = 0; % thought is to constrain how much replanning can push points to the edge of the gravito-inertial wrench boundary
@@ -79,11 +79,11 @@ s0 = [-5; ...        % x_G -5
 %       0];           % dth_C
 
 % desired end position
-x_des = [5; ... % x
-         1; ... % y
+x_des = [20; ... % x
+         5; ... % y
          -pi/4];   % th
-dx_des = [1; ... % dx
-          1; ... % dy
+dx_des = [20; ... % dx
+          20; ... % dy
           0];    % dth
 % x_des = [0; ... % x
 %          0; ... % y
@@ -179,7 +179,7 @@ if (warmStart)
            0; 0; ...
            0; 0; ...
            0; 0];
-    initialVel = 1; % need some sort of good guess
+    initialVel = 1; % CCC need some sort of good guess
     psolve2 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
         xp_2, yp_2, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
     P2 = reshape(psolve2,numel(psolve2)/5,5);
