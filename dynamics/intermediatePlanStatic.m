@@ -1,4 +1,4 @@
-function [xp, yp] = intermediatePlanStatic(xpD, ypD, knotVec, porder, direction, accelAdd)
+function [xp, yp] = intermediatePlanStatic(xpD, ypD, knotVec, porder, direction, xLength)
 % static path that connects to a dynamic path. Connects to end if direction
 % = 1 and connect to start if direction = -1. Currently using straight line
 % approach
@@ -30,6 +30,28 @@ end
 
 % New integration method
 if (direction == 1)
+    % resizing for standard size (convoluted way to determine linear
+    % relationship)
+    accelProfile = linspace(0,-1,numPoints);
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, accelProfile);%[zeros(1,99) -1]);
+    dxp = fnint(ddxp,1);
+    dxp.coefs = dxp.coefs - dxp.coefs(end);
+    dxp.coefs = dxp.coefs*fnval(dxpD,1)/dxp.coefs(1);
+    xp = fnint(dxp,0);
+    intercept = fnval(xp,1);
+    accelProfile = linspace(0,-1,numPoints);
+    leftTri = linspace(0,1,ceil(numPoints/2));
+    rightTri = linspace(-1,0,ceil(numPoints/2));
+    accelProfile = accelProfile + [leftTri(1:end-1) 0 rightTri(2:end)];
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, accelProfile);%[zeros(1,99) -1]);
+    dxp = fnint(ddxp,1);
+    dxp.coefs = dxp.coefs - dxp.coefs(end);
+    dxp.coefs = dxp.coefs*fnval(dxpD,1)/dxp.coefs(1);
+    xp = fnint(dxp,0);
+    slope = fnval(xp,1) - intercept;
+    accelAdd = (xLength - intercept)/slope;
+
+    % constructing spline
     accelProfile = linspace(0,-1,numPoints);
     leftTri = linspace(0,accelAdd,ceil(numPoints/2));
     rightTri = linspace(-accelAdd,0,ceil(numPoints/2));
@@ -45,7 +67,29 @@ if (direction == 1)
     xp.coefs = xp.coefs + fnval(xpD,1);
     yp.coefs = yp.coefs + fnval(ypD,1);
 else
-    accelProfile = linspace(1,0,numPoints); % CCC 1/3,0,numPoints at one point
+    % resizing for standard size (convoluted way to determine linear
+    % relationship)
+    accelProfile = linspace(0,-1,numPoints);
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, accelProfile);%[zeros(1,99) -1]);
+    dxp = fnint(ddxp,1);
+    dxp.coefs = dxp.coefs - dxp.coefs(end);
+    dxp.coefs = dxp.coefs*fnval(dxpD,1)/dxp.coefs(1);
+    xp = fnint(dxp,0);
+    intercept = fnval(xp,1);
+    accelProfile = linspace(0,-1,numPoints);
+    leftTri = linspace(0,1,ceil(numPoints/2));
+    rightTri = linspace(-1,0,ceil(numPoints/2));
+    accelProfile = accelProfile + [leftTri(1:end-1) 0 rightTri(2:end)];
+    ddxp = spap2(knotVec(3:end-2), porder-2, s, accelProfile);%[zeros(1,99) -1]);
+    dxp = fnint(ddxp,1);
+    dxp.coefs = dxp.coefs - dxp.coefs(end);
+    dxp.coefs = dxp.coefs*fnval(dxpD,1)/dxp.coefs(1);
+    xp = fnint(dxp,0);
+    slope = fnval(xp,1) - intercept;
+    accelAdd = (xLength - intercept)/slope;
+
+    % constructing spline
+    accelProfile = linspace(1,0,numPoints);
     leftTri = linspace(0,accelAdd,ceil(numPoints/2));
     rightTri = linspace(-accelAdd,0,ceil(numPoints/2));
     accelProfile = accelProfile + [leftTri(1:end-1) 0 rightTri(2:end)];

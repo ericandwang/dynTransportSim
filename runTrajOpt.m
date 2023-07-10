@@ -138,10 +138,10 @@ if (warmStart)
     dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
     
     % Static path (1)
-    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1, 4);
+    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1, 38.4099);
     
     % Static path (3)
-    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 8);
+    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 15.6376);
     
     % Static path (2)
     %x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
@@ -169,7 +169,7 @@ if (warmStart)
            fnval(fnder(yp_0,1),sBounds(2))/tTotal_0; 0; ...
            0; 0; ...
            0; 0];
-    initialVel = beq(1)/fnval(fnder(xp_1,1),sBounds(1));
+    initialVel = beq(1)/fnval(fnder(xp_1,1),sBounds(1)); %CCC TODO 7/10
     psolve1 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
         xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
     P1 = reshape(psolve1,numel(psolve1)/5,5);
@@ -189,7 +189,7 @@ if (warmStart)
            0; fnval(fnder(yp_4,1),sBounds(1))/tTotal_4; ...
            0; 0; ...
            0; 0];
-    initialVel = beq(2)/fnval(fnder(xp_3,1),sBounds(2));
+    initialVel = beq(2)/fnval(fnder(xp_3,1),sBounds(2)); %CCC TODO 7/10
     psolve3 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
         xp_3, yp_3, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
     P3 = reshape(psolve3,numel(psolve3)/5,5);
