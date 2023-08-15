@@ -139,26 +139,6 @@ if (warmStart)
     
     % Static path (1)
     [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1, 38.4099);
-    
-    % Static path (3)
-    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 15.6376);
-    
-    % Static path (2)
-    %x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
-    %y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
-    %s2 = linspace(0,1,length(x2));
-    %xp_2 = spap2(knotVec, porder, s2, x2);
-    %yp_2 = spap2(knotVec, porder, s2, y2);
-    %[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder); 
-    [xp_2, yp_2] = intermediatePlanBridge(xp_1, yp_1, xp_3, yp_3, knotVec, porder);
-    
-    % Pre-optimizing (0)
-    dss0 = ones(evalPoints,1).*1/tTotal_0;
-    ddss0 = zeros(evalPoints,1);
-    th0 = th_0(ss0*tTotal_0);
-    dth0 = dth_0(ss0*tTotal_0);
-    ddth0 = ddth_0(ss0*tTotal_0);
-    P0 = [dss0 ddss0 th0 dth0 ddth0];
 
     % Pre-optimizing (1)
     if (genFiles)
@@ -169,30 +149,53 @@ if (warmStart)
            fnval(fnder(yp_0,1),sBounds(2))/tTotal_0; 0; ...
            0; 0; ...
            0; 0];
-    initialVel = beq(1)/fnval(fnder(xp_1,1),sBounds(1)); %CCC TODO 7/10
-    psolve1 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+    %initialVel = sVelStatic(xp_1, [beq(1:2)], sBounds, evalPoints);
+    initialVel = 0; % 8/15 implemented velocity initialization but 0 works better
+    [psolve1,~,exitflag1] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
         xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
     P1 = reshape(psolve1,numel(psolve1)/5,5);
+
+    
+    % Static path (3)
+    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 15.6376*3);
+    
+    % Pre-optimizing (3)
+    beq = [0; fnval(fnder(xp_4,1),sBounds(1))/tTotal_4; ...
+           0; fnval(fnder(yp_4,1),sBounds(1))/tTotal_4; ...
+           0; 0; ...
+           0; 0];
+    %initialVel = sVelStatic(xp_3, [beq(1:2)], sBounds, evalPoints);
+    initialVel = 0; % 8/15 implemented velocity initialization but 0 works better
+    psolve3 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+        xp_3, yp_3, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
+    P3 = reshape(psolve3,numel(psolve3)/5,5);
+
+    % Static path (2)
+    %x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
+    %y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
+    %s2 = linspace(0,1,length(x2));
+    %xp_2 = spap2(knotVec, porder, s2, x2);
+    %yp_2 = spap2(knotVec, porder, s2, y2);
+    %[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder); 
+    [xp_2, yp_2] = intermediatePlanBridge(xp_1, yp_1, xp_3, yp_3, knotVec, porder);
 
     % Pre-optimizing (2)
     beq = [0; 0; ...
            0; 0; ...
            0; 0; ...
            0; 0];
-    initialVel = 1; % CCC need some sort of good guess
+    initialVel = 0; % CCC need some sort of good guess
     psolve2 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
         xp_2, yp_2, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
     P2 = reshape(psolve2,numel(psolve2)/5,5);
 
-    % Pre-optimizing (3)
-    beq = [0; fnval(fnder(xp_4,1),sBounds(1))/tTotal_4; ...
-           0; fnval(fnder(yp_4,1),sBounds(1))/tTotal_4; ...
-           0; 0; ...
-           0; 0];
-    initialVel = beq(2)/fnval(fnder(xp_3,1),sBounds(2)); %CCC TODO 7/10
-    psolve3 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
-        xp_3, yp_3, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
-    P3 = reshape(psolve3,numel(psolve3)/5,5);
+    % Pre-optimizing (0)
+    dss0 = ones(evalPoints,1).*1/tTotal_0;
+    ddss0 = zeros(evalPoints,1);
+    th0 = th_0(ss0*tTotal_0);
+    dth0 = dth_0(ss0*tTotal_0);
+    ddth0 = ddth_0(ss0*tTotal_0);
+    P0 = [dss0 ddss0 th0 dth0 ddth0];
 
     % Pre-optimizing (4)
     dss4 = ones(evalPoints,1).*1/tTotal_4;
@@ -380,7 +383,7 @@ if (iii == 1)
         dss0 = ones(evalPoints,1).*initialVel;
         ddss0 = zeros(evalPoints,1);
         for ii = 1:length(ddss0)-1
-            ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
+            ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*(ss0(ii+1)-ss0(ii)));
         end
         th0 = ones(evalPoints,1).*s0(5);
         dth0 = zeros(evalPoints,1);

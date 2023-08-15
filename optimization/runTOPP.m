@@ -1,4 +1,4 @@
-function [psolve, tt_prev] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, dceqFunFile, initialVel, ...
+function [psolve, tt_prev, exitflag] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, dceqFunFile, initialVel, ...
     xp, yp, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds)
 
     % spline
@@ -24,7 +24,7 @@ function [psolve, tt_prev] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, ve
     dss0 = ones(evalPoints,1).*initialVel;
     ddss0 = zeros(evalPoints,1);
     for ii = 1:length(ddss0)-1
-        ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*ss0(ii+1)-ss0(ii));
+        ddss0(ii) = (dss0(ii+1)^2 - dss0(ii)^2)/(2*(ss0(ii+1)-ss0(ii)));
     end
     th0 = zeros(evalPoints,1);
     dth0 = zeros(evalPoints,1);
@@ -90,6 +90,6 @@ function [psolve, tt_prev] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, ve
         'SpecifyConstraintGradient',useTOPPConstraintGradient, ...
         'Display','iter');
     % invoke solver
-    psolve = fmincon(problem);
+    [psolve,~,exitflag,~] = fmincon(problem);
 end
 
