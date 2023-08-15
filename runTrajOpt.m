@@ -55,42 +55,26 @@ b = (8.9/25)^2; % most conservative (9/25)^2
 
 % initial conditions
 r_GC = [0.07; objectH/2+handH/2];
-s0 = [-5; ...        % x_G -5
+s0 = [-0.5; ...     % x_G
       0; ...        % dx_G
-      5; ...        % y_G 5
+      0; ...        % y_G 5
       0; ...        % dy_G
-      -3/4*pi; ...        % th (0)
+      0; ...        % th
       0; ...        % dth
       r_GC; ...     % r_GC
       0; ...        % dr_GC
       0; ...
       0; ...        % th_C
       0];           % dth_C
-% s0 = [-5; ...        % x_G -5
-%       0; ...        % dx_G
-%       0; ...        % y_G 5
-%       0; ...        % dy_G
-%       0; ...        % th (0)
-%       0; ...        % dth
-%       r_GC; ...     % r_GC
-%       0; ...        % dr_GC
-%       0; ...
-%       0; ...        % th_C
-%       0];           % dth_C
 
 % desired end position
-x_des = [20; ... % x
-         5; ... % y
-         -pi/4];   % th
-dx_des = [20; ... % dx
-          20; ... % dy
+x_des = [0; ... % x
+         0; ... % y
+         0];   % th
+dx_des = [0; ... % dx
+          0; ... % dy
           0];    % dth
-% x_des = [0; ... % x
-%          0; ... % y
-%          0];   % th
-% dx_des = [0; ... % dx
-%           0; ... % dy
-%           0];    % dth
+
 s_des = [x_des(1); dx_des(1); x_des(2); dx_des(2); x_des(3); dx_des(3); ...
          s0(7:end)];
 
@@ -138,7 +122,7 @@ if (warmStart)
     dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
     
     % Static path (1)
-    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1, 38.4099);
+    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1, 0.01);%38.4099/100);
 
     % Pre-optimizing (1)
     if (genFiles)
@@ -157,7 +141,7 @@ if (warmStart)
 
     
     % Static path (3)
-    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 15.6376*3);
+    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 0.01);%15.6376*3);
     
     % Pre-optimizing (3)
     beq = [0; fnval(fnder(xp_4,1),sBounds(1))/tTotal_4; ...
@@ -190,19 +174,33 @@ if (warmStart)
     P2 = reshape(psolve2,numel(psolve2)/5,5);
 
     % Pre-optimizing (0)
-    dss0 = ones(evalPoints,1).*1/tTotal_0;
-    ddss0 = zeros(evalPoints,1);
-    th0 = th_0(ss0*tTotal_0);
-    dth0 = dth_0(ss0*tTotal_0);
-    ddth0 = ddth_0(ss0*tTotal_0);
+    if (tTotal_0 == 0)
+        dss0 = ones(evalPoints,1);
+        th0 = ones(evalPoints,1)*th_0(0);
+        dth0 = zeros(evalPoints,1);
+        ddth0 = zeros(evalPoints,1);
+    else
+        dss0 = ones(evalPoints,1).*1/tTotal_0;
+        th0 = th_0(ss0*tTotal_0);
+        dth0 = dth_0(ss0*tTotal_0);
+        ddth0 = ddth_0(ss0*tTotal_0);
+    end
+    ddss0 = zeros(evalPoints,1);    
     P0 = [dss0 ddss0 th0 dth0 ddth0];
 
     % Pre-optimizing (4)
-    dss4 = ones(evalPoints,1).*1/tTotal_4;
+    if (tTotal_4 == 0)
+        dss4 = ones(evalPoints,1);
+        th4 = ones(evalPoints,1)*th_4(0);
+        dth4 = zeros(evalPoints,1);
+        ddth4 = zeros(evalPoints,1);
+    else
+        dss4 = ones(evalPoints,1).*1/tTotal_4;
+        th4 = th_4(ss0*tTotal_4);
+        dth4 = dth_4(ss0*tTotal_4);
+        ddth4 = ddth_4(ss0*tTotal_4);
+    end
     ddss4 = zeros(evalPoints,1);
-    th4 = th_4(ss0*tTotal_4);
-    dth4 = dth_4(ss0*tTotal_4);
-    ddth4 = ddth_4(ss0*tTotal_4);
     P4 = [dss4 ddss4 th4 dth4 ddth4];
 
     % Offsetting path parameter s

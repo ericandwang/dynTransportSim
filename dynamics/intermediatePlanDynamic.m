@@ -57,6 +57,22 @@ elseif (th0 == 0 && dth0 == 0)
     ddth1 = 0;
     t0 = 0;
     t1 = 0;
+    tTotal = 0;
+    th = @(t) 0;
+    dth = @(t) 0;
+    ddth = @(t) 0;
+    x = ones(numPoints*2,1).*x0;
+    y = ones(numPoints*2,1).*y0;
+    s = linspace(0,1,length(x));
+    xp = spap2(knotVec, porder, s, x);
+    yp = spap2(knotVec, porder, s, y);
+    x = 0;
+    vx = 0;
+    ax = 0;
+    y = 0;
+    vy = 0;
+    ay = 0;
+    return;
 else
     accelOrder = -1;
     ddth0 = -u;

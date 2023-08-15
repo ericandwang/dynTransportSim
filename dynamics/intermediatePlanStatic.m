@@ -30,6 +30,14 @@ end
 
 % New integration method
 if (direction == 1)
+    if (abs(fnval(dxpD,1)) < 1e-8)
+        x = ones(numPoints*2,1).*fnval(xpD,1);
+        y = ones(numPoints*2,1).*fnval(ypD,1);
+        s = linspace(0,1,length(x));
+        xp = spap2(knotVec, porder, s, x);
+        yp = spap2(knotVec, porder, s, y);
+        return;
+    end
     % resizing for standard size (convoluted way to determine linear
     % relationship)
     accelProfile = linspace(0,-1,numPoints);
@@ -69,6 +77,14 @@ if (direction == 1)
 else
     % resizing for standard size (convoluted way to determine linear
     % relationship)
+    if (abs(fnval(dxpD,0)) < 1e-8)
+        x = ones(numPoints*2,1).*fnval(xpD,0);
+        y = ones(numPoints*2,1).*fnval(ypD,0);
+        s = linspace(0,1,length(x));
+        xp = spap2(knotVec, porder, s, x);
+        yp = spap2(knotVec, porder, s, y);
+        return;
+    end
     accelProfile = linspace(0,-1,numPoints);
     ddxp = spap2(knotVec(3:end-2), porder-2, s, accelProfile);%[zeros(1,99) -1]);
     dxp = fnint(ddxp,1);
