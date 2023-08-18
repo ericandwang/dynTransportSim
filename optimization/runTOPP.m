@@ -1,5 +1,10 @@
 function [psolve, tt_prev, exitflag] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, dceqFunFile, initialVel, ...
-    xp, yp, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds)
+    xp, yp, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds, pMatchFlag)
+
+    % pMatchFlag = 0 -- do not match
+    % pMatchFlag = 1 -- match left only
+    % pMatchFlag = 2 -- match right only
+    % pMatchFlag = 3 -- match both
 
     % spline
     dxp = fnder(xp,1);
@@ -62,7 +67,36 @@ function [psolve, tt_prev, exitflag] = runTOPP(s0, tol, evalPoints, r_GC, param,
     Aeq(6,3*evalPoints) = 1;
     Aeq(7,3*evalPoints+1) = 1; % angular velocity endpoints
     Aeq(8,4*evalPoints) = 1;
-    
+
+    % handling zero slope splines
+    if ((Aeq(1,1) < 1e-8 || Aeq(3,1) < 1e-8) && (pMatchFlag == 1 || pMatchFlag == 3))
+        Aeq(1,1) = 0; Aeq(3,1) = 0;
+        Aeq(end+1,1) = 1;
+    else
+        if (pMatchFlag == 1)
+            beq = beq(1:8);
+        end
+        if (pMatchFlag == 3)
+            beq = beq([1:8 10]);
+        end
+    end
+
+    if ((Aeq(2,evalPoints) < 1e-8 || Aeq(4,evalPoints) < 1e-8) && (pMatchFlag == 2 || pMatchFlag == 3))
+        Aeq(2,evalPoints) = 0; Aeq(4,evalPoints) = 0;
+        Aeq(end+1,evalPoints) = 1;
+    else
+        if (pMatchFlag == 2)
+            beq = beq(1:8);
+        end
+        if (pMatchFlag == 3)
+            if (length(beq) == 9)
+                beq = beq(1:8);
+            else
+                beq = beq([1:8 10]);
+            end
+        end
+    end
+
     % lower and upper bounds
     lb = [zeros(evalPoints,1); ones(evalPoints,1).*-Inf; ...
           ones(evalPoints,1).*-Inf; ones(evalPoints,1).*-Inf; ...

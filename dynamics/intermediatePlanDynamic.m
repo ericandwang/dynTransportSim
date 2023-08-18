@@ -61,11 +61,13 @@ elseif (th0 == 0 && dth0 == 0)
     th = @(t) 0;
     dth = @(t) 0;
     ddth = @(t) 0;
-    x = ones(numPoints*2,1).*x0;
-    y = ones(numPoints*2,1).*y0;
+    x = zeros(numPoints*2,1);
+    y = zeros(numPoints*2,1);
     s = linspace(0,1,length(x));
     xp = spap2(knotVec, porder, s, x);
     yp = spap2(knotVec, porder, s, y);
+    xp.coefs = xp.coefs + x0;
+    yp.coefs = yp.coefs + y0;
     x = 0;
     vx = 0;
     ax = 0;

@@ -5,7 +5,7 @@ addpath(genpath(folder))
 
 %% Options
 % iteration loops
-numIterations = 5;
+numIterations = 10;
 % convergence rate for transit time
 alpha = 0.2; % 0.35 for example good
 beta = 0; % thought is to constrain how much replanning can push points to the edge of the gravito-inertial wrench boundary
@@ -18,6 +18,7 @@ useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
 accelLim = 100; % object frame y acceleration limit
+maxFunctionEvaluations = 1000;
 % PATH optimization
 usePATHObjectiveGradient = false;
 usePATHConstraintGradient = false;
@@ -48,7 +49,7 @@ param = [m_G; I_G; m_C; I_C; r_p1C; r_p2C; g; mu; handW; handH; objectW; objectH
 % controller actuation limits (bidirectional)
 u_max = [30; 30; 20];
 % tolerance for distance from plane constraints
-tol = 0.05;%0.01 (0.05 = conservative);
+tol = 0.01;%0.01 (0.05 = conservative);
 % Parameters for control barrier function cone
 a = (2.4/25)^2; % most conservative (2.5/25)^2
 b = (8.9/25)^2; % most conservative (9/25)^2
@@ -114,64 +115,14 @@ if (warmStart)
     numPoints = 100;
     evalPoints = collPoints;
     ss0 = linspace(sBounds(1),sBounds(2),evalPoints)';
+
+
     % statically infeasible IC to statically feasible point (0)
     [th_0, dth_0, ddth_0, tTotal_0, xp_0, yp_0] = intermediatePlanDynamic(s0, x_des, fCone, param, knotVec, porder, 1);
     % statically feasible point to statically infeasible FC (4)
     [th_4, dth_4, ddth_4, tTotal_4, xp_4, yp_4] = intermediatePlanDynamic(s_des, [s0(1); s0(3); s0(5)], fCone, param, knotVec, porder, -1);
-    dxp_4 = fnder(xp_4,1); ddxp_0 = fnder(xp_4,2);
-    dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
-    
-    % Static path (1)
-    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1, 0.01);%38.4099/100);
-
-    % Pre-optimizing (1)
-    if (genFiles)
-        dceqGenTOPP2(ss0, evalPoints, 'dceqFunGenSubPath');
-    end
-    
-    beq = [fnval(fnder(xp_0,1),sBounds(2))/tTotal_0; 0; ...
-           fnval(fnder(yp_0,1),sBounds(2))/tTotal_0; 0; ...
-           0; 0; ...
-           0; 0];
-    %initialVel = sVelStatic(xp_1, [beq(1:2)], sBounds, evalPoints);
-    initialVel = 0; % 8/15 implemented velocity initialization but 0 works better
-    [psolve1,~,exitflag1] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
-        xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
-    P1 = reshape(psolve1,numel(psolve1)/5,5);
-
-    
-    % Static path (3)
-    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 0.01);%15.6376*3);
-    
-    % Pre-optimizing (3)
-    beq = [0; fnval(fnder(xp_4,1),sBounds(1))/tTotal_4; ...
-           0; fnval(fnder(yp_4,1),sBounds(1))/tTotal_4; ...
-           0; 0; ...
-           0; 0];
-    %initialVel = sVelStatic(xp_3, [beq(1:2)], sBounds, evalPoints);
-    initialVel = 0; % 8/15 implemented velocity initialization but 0 works better
-    psolve3 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
-        xp_3, yp_3, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
-    P3 = reshape(psolve3,numel(psolve3)/5,5);
-
-    % Static path (2)
-    %x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
-    %y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
-    %s2 = linspace(0,1,length(x2));
-    %xp_2 = spap2(knotVec, porder, s2, x2);
-    %yp_2 = spap2(knotVec, porder, s2, y2);
-    %[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder); 
-    [xp_2, yp_2] = intermediatePlanBridge(xp_1, yp_1, xp_3, yp_3, knotVec, porder);
-
-    % Pre-optimizing (2)
-    beq = [0; 0; ...
-           0; 0; ...
-           0; 0; ...
-           0; 0];
-    initialVel = 0; % CCC need some sort of good guess
-    psolve2 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
-        xp_2, yp_2, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds);
-    P2 = reshape(psolve2,numel(psolve2)/5,5);
+    %dxp_4 = fnder(xp_4,1); ddxp_0 = fnder(xp_4,2);
+    %dyp_4 = fnder(yp_4,1); ddyp_0 = fnder(yp_4,2);
 
     % Pre-optimizing (0)
     if (tTotal_0 == 0)
@@ -202,6 +153,62 @@ if (warmStart)
     end
     ddss4 = zeros(evalPoints,1);
     P4 = [dss4 ddss4 th4 dth4 ddth4];
+
+    
+    % Static path (1)
+    [xp_1, yp_1] = intermediatePlanStatic(xp_0, yp_0, knotVec, porder, 1, 0.01);%38.4099/100);
+
+    % Pre-optimizing (1)
+    if (genFiles)
+        dceqGenTOPP2(ss0, evalPoints, 'dceqFunGenSubPath');
+    end
+    
+    beq = [fnval(fnder(xp_0,1),sBounds(2))/tTotal_0; 0; ...
+           fnval(fnder(yp_0,1),sBounds(2))/tTotal_0; 0; ...
+           0; 0; ...
+           0; 0];
+    beq = [beq; P0(end,1)];
+    %initialVel = sVelStatic(xp_1, [beq(1:2)], sBounds, evalPoints);
+    initialVel = 0; % 8/15 implemented velocity initialization but 0 works better
+    [psolve1,~,exitflag1] = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+        xp_1, yp_1, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds,1);
+    P1 = reshape(psolve1,numel(psolve1)/5,5);
+
+    
+    % Static path (3)
+    [xp_3, yp_3] = intermediatePlanStatic(xp_4, yp_4, knotVec, porder, -1, 0.01);%15.6376*3);
+    
+    % Pre-optimizing (3)
+    beq = [0; fnval(fnder(xp_4,1),sBounds(1))/tTotal_4; ...
+           0; fnval(fnder(yp_4,1),sBounds(1))/tTotal_4; ...
+           0; 0; ...
+           0; 0];
+    beq = [beq; P4(1,1)];
+    %initialVel = sVelStatic(xp_3, [beq(1:2)], sBounds, evalPoints);
+    initialVel = 0; % 8/15 implemented velocity initialization but 0 works better
+    psolve3 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+        xp_3, yp_3, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds,2);
+    P3 = reshape(psolve3,numel(psolve3)/5,5);
+
+    % Static path (2)
+    %x2 = linspace(fnval(xp_1,1),fnval(xp_3,0),numPoints);
+    %y2 = linspace(fnval(yp_1,1),fnval(yp_3,0),numPoints);
+    %s2 = linspace(0,1,length(x2));
+    %xp_2 = spap2(knotVec, porder, s2, x2);
+    %yp_2 = spap2(knotVec, porder, s2, y2);
+    %[xp_2, yp_2] = intermediatePlanBridge(fnval(xp_1,1), fnval(yp_1,1), fnval(xp_3,0), fnval(yp_3,0), knotVec, porder); 
+    [xp_2, yp_2] = intermediatePlanBridge(xp_1, yp_1, xp_3, yp_3, knotVec, porder);
+
+    % Pre-optimizing (2)
+    beq = [0; 0; ...
+           0; 0; ...
+           0; 0; ...
+           0; 0];
+    beq = [beq; P1(end,1); P3(1,1)];
+    initialVel = 0; % CCC need some sort of good guess
+    psolve2 = runTOPP(s0, tol, evalPoints, r_GC, param, fCone, vec, accelLim, ss0, @dceqFunGenSubPath, initialVel, ...
+        xp_2, yp_2, useTOPPObjectiveGradient, useTOPPConstraintGradient, beq, sBounds,3);
+    P2 = reshape(psolve2,numel(psolve2)/5,5);
 
     % Offsetting path parameter s
     xp_1.knots = xp_1.knots + 1;
@@ -491,7 +498,7 @@ problem.solver = 'fmincon';
 problem.options = optimoptions('fmincon', ...
     'SpecifyObjectiveGradient',useTOPPObjectiveGradient, ...
     'SpecifyConstraintGradient',useTOPPConstraintGradient, ...
-    'MaxFunctionEvaluations', 3000/30, ...
+    'MaxFunctionEvaluations', maxFunctionEvaluations, ...
     'Display','iter');
 
 % invoke solver
@@ -568,7 +575,7 @@ problem.solver = 'fmincon';
 problem.options = optimoptions('fmincon', ...
     'SpecifyObjectiveGradient',useTOPPObjectiveGradient, ...
     'SpecifyConstraintGradient',useTOPPConstraintGradient, ...
-    'MaxFunctionEvaluations', 3000/30, ...
+    'MaxFunctionEvaluations', maxFunctionEvaluations, ...
     'Display','iter');
 
 % invoke solver
