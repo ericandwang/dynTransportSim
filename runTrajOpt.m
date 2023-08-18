@@ -18,7 +18,7 @@ useTOPPObjectiveGradient = true;
 useTOPPConstraintGradient = true;
 useLinearization = false;
 accelLim = 100; % object frame y acceleration limit
-maxFunctionEvaluations = 1000;
+maxFunctionEvaluations = 300;
 % PATH optimization
 usePATHObjectiveGradient = false;
 usePATHConstraintGradient = false;
@@ -56,9 +56,9 @@ b = (8.9/25)^2; % most conservative (9/25)^2
 
 % initial conditions
 r_GC = [0.07; objectH/2+handH/2];
-s0 = [-0.5; ...     % x_G
+s0 = [-0.25; ...     % x_G
       0; ...        % dx_G
-      0; ...        % y_G 5
+      -0.2; ...        % y_G
       0; ...        % dy_G
       0; ...        % th
       0; ...        % dth
@@ -69,8 +69,8 @@ s0 = [-0.5; ...     % x_G
       0];           % dth_C
 
 % desired end position
-x_des = [0; ... % x
-         0; ... % y
+x_des = [0.25; ... % x
+         0.2; ... % y
          0];   % th
 dx_des = [0; ... % dx
           0; ... % dy
@@ -899,7 +899,7 @@ end
 % Show difference in path
 splot = linspace(ss0(1),ss0(end),length(ss0)*5);
 figure
-for i = 1:iii
+for i = 1:iii-3
     hold on
     plot(fnval(xpold{i},splot), fnval(ypold{i},splot))
 end
